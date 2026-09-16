@@ -55,21 +55,6 @@ export default function Sidebar() {
         isCollapsed ? 'w-16' : 'w-56'
       }`}
     >
-      <div className={`flex items-center mb-2 border-b border-slate-100 pb-2 ${isCollapsed ? 'justify-center' : 'justify-end px-2 py-1.5'}`}>
-        <button
-          onClick={toggleSidebar}
-          className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 hover:text-slate-800 cursor-pointer transition-colors"
-          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {isCollapsed ? (
-            <PanelLeftOpen className="h-4 w-4 shrink-0" />
-          ) : (
-            <PanelLeftClose className="h-4 w-4 shrink-0" />
-          )}
-        </button>
-      </div>
-
       <nav className="space-y-1 flex-1">
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -98,6 +83,27 @@ export default function Sidebar() {
           );
         })}
       </nav>
+
+      {/* Bottom Collapsible Toggle Button */}
+      <div className="pt-2 border-t border-slate-200 mt-auto">
+        <button
+          onClick={toggleSidebar}
+          className={`flex items-center gap-2 w-full rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer ${
+            isCollapsed ? 'justify-center p-2' : 'px-3 py-2'
+          }`}
+          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {isCollapsed ? (
+            <PanelLeftOpen className="h-4 w-4 shrink-0" />
+          ) : (
+            <>
+              <PanelLeftClose className="h-4 w-4 shrink-0" />
+              <span>Collapse Sidebar</span>
+            </>
+          )}
+        </button>
+      </div>
     </aside>
   );
 }
