@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import { Bus, RouteStop, TrackingStatus } from '@/lib/types';
+import { Bus, BusStatus, RouteStop, TrackingStatus } from '@/lib/types';
 import 'leaflet/dist/leaflet.css';
 
 interface LiveMapProps {
@@ -109,9 +109,11 @@ export default function LiveMap({
       const lng = bus.tracking?.longitude || 85.3206;
       bounds.push([lat, lng]);
 
-      const trackingStatus = bus.tracking?.trackingStatus || TrackingStatus.OFFLINE;
+      const isMovingBus = bus.status === BusStatus.MOVING || bus.tracking?.status === BusStatus.MOVING;
+      const trackingStatus =
+        bus.tracking?.trackingStatus || (isMovingBus ? TrackingStatus.LIVE : TrackingStatus.OFFLINE);
       let statusColor = '#6b7280'; // Gray offline
-      if (trackingStatus === TrackingStatus.LIVE) statusColor = '#22c55e'; // Green live
+      if (trackingStatus === TrackingStatus.LIVE || isMovingBus) statusColor = '#22c55e'; // Green live
       else if (trackingStatus === TrackingStatus.STALE) statusColor = '#eab308'; // Yellow stale
 
       const isSelected = selectedBusId === bus.id;

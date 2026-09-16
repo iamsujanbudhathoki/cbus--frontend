@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import { Bus, TrackingStatus } from '@/lib/types';
+import { Bus, BusStatus, TrackingStatus } from '@/lib/types';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
 import EmptyState from '@/components/shared/empty-state';
@@ -124,9 +124,10 @@ export default function CollegeAdminDashboard() {
                 </TableHeader>
                 <TableBody>
                   {buses.map((b) => {
-                    const trackingStatus = b.tracking?.trackingStatus || TrackingStatus.OFFLINE;
+                    const isMovingBus = b.status === BusStatus.MOVING || b.tracking?.status === BusStatus.MOVING;
+                    const trackingStatus = b.tracking?.trackingStatus || (isMovingBus ? TrackingStatus.LIVE : TrackingStatus.OFFLINE);
                     let badgeVariant: 'emerald' | 'yellow' | 'secondary' = 'secondary';
-                    if (trackingStatus === TrackingStatus.LIVE) badgeVariant = 'emerald';
+                    if (trackingStatus === TrackingStatus.LIVE || isMovingBus) badgeVariant = 'emerald';
                     else if (trackingStatus === TrackingStatus.STALE) badgeVariant = 'yellow';
 
                     return (

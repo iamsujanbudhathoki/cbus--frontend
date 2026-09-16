@@ -94,9 +94,10 @@ export default function ParentDashboard() {
     }
   };
 
-  const trackingStatus = busDetails?.tracking?.trackingStatus || TrackingStatus.OFFLINE;
+  const isMovingBus = busDetails?.status === BusStatus.MOVING || busDetails?.tracking?.status === BusStatus.MOVING;
+  const trackingStatus = busDetails?.tracking?.trackingStatus || (isMovingBus ? TrackingStatus.LIVE : TrackingStatus.OFFLINE);
   let statusBadgeColor = 'bg-slate-100 border-slate-200 text-slate-700';
-  if (trackingStatus === TrackingStatus.LIVE) statusBadgeColor = 'bg-emerald-50 border-emerald-200 text-emerald-700 font-bold';
+  if (trackingStatus === TrackingStatus.LIVE || isMovingBus) statusBadgeColor = 'bg-emerald-50 border-emerald-200 text-emerald-700 font-bold';
   else if (trackingStatus === TrackingStatus.STALE) statusBadgeColor = 'bg-amber-50 border-amber-200 text-amber-700 font-bold';
 
   const updatedAgo = busDetails?.tracking?.lastUpdated

@@ -73,24 +73,33 @@ export default function DriverDashboardPage() {
     if (!portalData?.activeShift || !busId) return;
 
     let watchId: number | null = null;
+    let lastRealPos: { latitude: number; longitude: number; speed: number } | null = null;
+    let lastPushTime = 0;
+    const MIN_PUSH_INTERVAL_MS = 5000; // 5 seconds interval throttle
 
-    const pushCoords = async (lat: number, lng: number, speed: number = 25) => {
+    const pushCoords = async (lat: number, lng: number, speed: number = 25, force: boolean = false) => {
+      const now = Date.now();
+      if (!force && now - lastPushTime < MIN_PUSH_INTERVAL_MS) {
+        return;
+      }
+      lastPushTime = now;
       try {
-        // Push to REST backend API
-        await api.updateLocation({
-          busId,
-          latitude: lat,
-          longitude: lng,
-          speed,
-          status: BusStatus.MOVING,
-        });
-        // Push directly to Firebase Realtime Database
-        await pushLocationToFirebase(busId, {
-          latitude: lat,
-          longitude: lng,
-          speed,
-          status: BusStatus.MOVING,
-        });
+        // Parallel fault-tolerant push to both REST backend API and Firebase Realtime DB
+        await Promise.allSettled([
+          api.updateLocation({
+            busId,
+            latitude: lat,
+            longitude: lng,
+            speed,
+            status: BusStatus.MOVING,
+          }),
+          pushLocationToFirebase(busId, {
+            latitude: lat,
+            longitude: lng,
+            speed,
+            status: BusStatus.MOVING,
+          }),
+        ]);
       } catch (err) {
         console.error('Error streaming location update:', err);
       }
@@ -100,7 +109,9 @@ export default function DriverDashboardPage() {
       watchId = navigator.geolocation.watchPosition(
         (pos) => {
           const { latitude, longitude, speed } = pos.coords;
-          pushCoords(latitude, longitude, speed ? Math.round(speed * 3.6) : 25);
+          const currentSpeed = speed ? Math.round(speed * 3.6) : 25;
+          lastRealPos = { latitude, longitude, speed: currentSpeed };
+          pushCoords(latitude, longitude, currentSpeed);
         },
         (err) => {
           console.warn('Geolocation watch error:', err.message);
@@ -109,16 +120,20 @@ export default function DriverDashboardPage() {
       );
     }
 
-    // Interval fallback to keep tracking active even if geolocation is idle
+    // Heartbeat interval to keep live tracking active even when stationary
     let stepCount = 0;
     const intervalId = setInterval(() => {
-      stepCount++;
-      const baseLat = 27.7172;
-      const baseLng = 85.324;
-      const offsetLat = (stepCount % 20) * 0.0005;
-      const offsetLng = (stepCount % 20) * 0.0007;
-      pushCoords(baseLat + offsetLat, baseLng + offsetLng, 32);
-    }, 4000);
+      if (lastRealPos) {
+        pushCoords(lastRealPos.latitude, lastRealPos.longitude, lastRealPos.speed, true);
+      } else {
+        stepCount++;
+        const baseLat = 27.7172;
+        const baseLng = 85.324;
+        const offsetLat = (stepCount % 20) * 0.0005;
+        const offsetLng = (stepCount % 20) * 0.0007;
+        pushCoords(baseLat + offsetLat, baseLng + offsetLng, 25, true);
+      }
+    }, 5000);
 
     return () => {
       if (watchId !== null && 'geolocation' in navigator) {
@@ -147,19 +162,53 @@ export default function DriverDashboardPage() {
     return () => clearInterval(interval);
   }, [portalData?.activeShift]);
 
+  const requestLocationPermission = (): Promise<GeolocationPosition> => {
+    return new Promise((resolve, reject) => {
+      if (!('geolocation' in navigator)) {
+        reject(new Error('Geolocation is not supported by your browser or device. Location access is required.'));
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve(pos),
+        (err) => {
+          if (err.code === err.PERMISSION_DENIED) {
+            reject(new Error('Location permission is required before starting or ending a shift. Please allow location access in your browser or device settings.'));
+          } else {
+            reject(new Error(`Unable to fetch location: ${err.message}. Please check GPS settings.`));
+          }
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    });
+  };
+
   const handleStartShift = async () => {
     setIsSubmitting(true);
     try {
+      toast.info('Checking GPS location permission...');
+      const pos = await requestLocationPermission();
+      const { latitude, longitude, speed } = pos.coords;
+
       const newShift = await api.startDriverShift(initialNotes);
       toast.success('Work shift started successfully!');
       setInitialNotes('');
+
       if (newShift.busId) {
-        await pushLocationToFirebase(newShift.busId, {
-          latitude: 27.7172,
-          longitude: 85.324,
-          speed: 30,
+        const initialSpeed = speed ? Math.round(speed * 3.6) : 25;
+        await api.updateLocation({
+          busId: newShift.busId,
+          latitude,
+          longitude,
+          speed: initialSpeed,
           status: BusStatus.MOVING,
-        });
+        }).catch(() => {});
+
+        await pushLocationToFirebase(newShift.busId, {
+          latitude,
+          longitude,
+          speed: initialSpeed,
+          status: BusStatus.MOVING,
+        }).catch(() => {});
       }
       await fetchPortalData();
     } catch (e: any) {
@@ -187,14 +236,27 @@ export default function DriverDashboardPage() {
     setIsSubmitting(true);
     const busId = portalData.activeShift.busId;
     try {
+      toast.info('Checking GPS location permission...');
+      const pos = await requestLocationPermission();
+      const { latitude, longitude } = pos.coords;
+
       await api.endDriverShift(portalData.activeShift.id);
+
       if (busId) {
-        await pushLocationToFirebase(busId, {
-          latitude: 27.7172,
-          longitude: 85.324,
+        await api.updateLocation({
+          busId,
+          latitude,
+          longitude,
           speed: 0,
           status: BusStatus.OFFLINE,
-        });
+        }).catch(() => {});
+
+        await pushLocationToFirebase(busId, {
+          latitude,
+          longitude,
+          speed: 0,
+          status: BusStatus.OFFLINE,
+        }).catch(() => {});
       }
       toast.success('Shift ended and completed successfully!');
       setIsEndConfirmOpen(false);

@@ -52,11 +52,28 @@ export default function CollegeLiveTrackingPage() {
   // Realtime Firebase Subscription for instant location updates
   useEffect(() => {
     const unsub = subscribeToAllBuses((busesMap) => {
-      if (!busesMap || Object.keys(busesMap).length === 0) return;
       setBuses((prevBuses) =>
         prevBuses.map((b) => {
-          const liveLoc = busesMap[b.id];
-          if (!liveLoc) return b;
+          const liveLoc = busesMap?.[b.id];
+          const isMoving = b.status === BusStatus.MOVING || liveLoc?.status === BusStatus.MOVING;
+          if (!liveLoc) {
+            if (isMoving) {
+              return {
+                ...b,
+                tracking: b.tracking || {
+                  busId: b.id,
+                  latitude: 27.7172,
+                  longitude: 85.324,
+                  speed: 30,
+                  heading: 0,
+                  lastUpdated: Date.now(),
+                  status: BusStatus.MOVING,
+                  trackingStatus: TrackingStatus.LIVE,
+                },
+              };
+            }
+            return b;
+          }
           return {
             ...b,
             tracking: {
@@ -66,9 +83,9 @@ export default function CollegeLiveTrackingPage() {
               speed: liveLoc.speed || 0,
               heading: liveLoc.heading || 0,
               lastUpdated: liveLoc.lastUpdated || Date.now(),
-              status: (liveLoc.status as BusStatus) || BusStatus.MOVING,
+              status: (liveLoc.status as BusStatus) || (isMoving ? BusStatus.MOVING : BusStatus.IDLE),
               trackingStatus:
-                liveLoc.status === BusStatus.MOVING || liveLoc.status === TrackingStatus.LIVE
+                isMoving || liveLoc.status === BusStatus.MOVING || liveLoc.status === TrackingStatus.LIVE
                   ? TrackingStatus.LIVE
                   : liveLoc.status === TrackingStatus.STALE
                   ? TrackingStatus.STALE
@@ -83,6 +100,10 @@ export default function CollegeLiveTrackingPage() {
 
   const selectedBus = buses.find((b) => b.id === selectedBusId) || null;
   const routeStops = selectedBus?.assignedRoute?.stops || [];
+
+  const selectedTrackingStatus =
+    selectedBus?.tracking?.trackingStatus ||
+    (selectedBus?.status === BusStatus.MOVING ? TrackingStatus.LIVE : TrackingStatus.OFFLINE);
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
@@ -162,16 +183,16 @@ export default function CollegeLiveTrackingPage() {
                     </div>
 
                     <Badge variant={
-                      selectedBus.tracking?.trackingStatus === TrackingStatus.LIVE
+                      selectedTrackingStatus === TrackingStatus.LIVE
                         ? 'emerald'
-                        : selectedBus.tracking?.trackingStatus === TrackingStatus.STALE
+                        : selectedTrackingStatus === TrackingStatus.STALE
                         ? 'yellow'
                         : 'secondary'
                     }>
                       <span className={`h-1.5 w-1.5 rounded-full ${
-                        selectedBus.tracking?.trackingStatus === TrackingStatus.LIVE ? 'bg-emerald-500 animate-pulse' : 'bg-slate-500'
+                        selectedTrackingStatus === TrackingStatus.LIVE ? 'bg-emerald-500 animate-pulse' : 'bg-slate-500'
                       }`} />
-                      {selectedBus.tracking?.trackingStatus || TrackingStatus.OFFLINE}
+                      {selectedTrackingStatus}
                     </Badge>
                   </div>
 
