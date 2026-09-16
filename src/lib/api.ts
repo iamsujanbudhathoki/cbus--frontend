@@ -1,11 +1,6 @@
 import { Bus, College, Driver, DriverPortalData, DriverShift, Parent, Route, RouteStop, Student, User } from './types';
 
-const getApiBaseUrl = (): string => {
-  const rawUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000').trim().replace(/\/+$/, '');
-  return rawUrl.endsWith('/api/v1') ? rawUrl : `${rawUrl}/api/v1`;
-};
-
-const API_BASE_URL = getApiBaseUrl();
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
 
 async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
