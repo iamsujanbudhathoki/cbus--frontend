@@ -133,7 +133,7 @@ export default function Header() {
 
           {/* Profile Dropdown Menu */}
           {isProfileDropdownOpen && (
-            <div className="absolute right-0 mt-1.5 w-64 rounded-lg bg-white p-2 shadow-md border border-slate-200 z-50 text-xs">
+            <div className="absolute right-0 mt-1.5 w-64 rounded-lg bg-white p-2 shadow-md border border-slate-200 z-[99999] text-xs">
               {/* User Identity Header */}
               <div className="rounded-md bg-slate-50 p-2.5 border border-slate-200 mb-1.5">
                 <p className="font-bold text-slate-900 truncate">{user.name}</p>
@@ -199,12 +199,12 @@ export default function Header() {
 
       {/* Mobile Drawer Backdrop & Menu */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 z-40 flex md:hidden">
+        <div className="fixed inset-0 z-[99999] flex md:hidden">
           <div
             className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
             onClick={() => setMobileMenuOpen(false)}
           />
-          <div className="relative flex w-64 flex-col bg-white p-4 shadow-xl z-50 border-r border-slate-200">
+          <div className="relative flex w-64 flex-col bg-white p-4 shadow-xl z-[99999] border-r border-slate-200">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
               <div className="flex items-center gap-2">
                 <img src="/busapp-logo.jpg" alt="Bus App Logo" className="h-6 w-6 rounded-md object-cover border border-slate-200" />

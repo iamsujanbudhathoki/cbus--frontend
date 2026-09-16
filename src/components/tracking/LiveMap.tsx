@@ -197,6 +197,7 @@ export default function LiveMap({
   return (
     <div
       ref={mapRef}
+      className="relative z-0 isolate"
       style={{ height, width: '100%', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
     />
   );

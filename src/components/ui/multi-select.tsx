@@ -210,7 +210,7 @@ export function MultiSelect({
       {isOpen && (
         <div
           role="listbox"
-          className="absolute z-50 mt-1 max-h-60 w-full overflow-hidden rounded-xl border border-slate-200 bg-white p-1 text-slate-950 shadow-lg animate-in fade-in-50 zoom-in-95"
+          className="absolute z-[99999] mt-1 max-h-60 w-full overflow-hidden rounded-xl border border-slate-200 bg-white p-1 text-slate-950 shadow-lg animate-in fade-in-50 zoom-in-95"
         >
           {/* Search Bar */}
           <div className="flex items-center border-b border-slate-100 px-2.5 py-1.5 gap-2">
