@@ -48,13 +48,13 @@ export function RouteCard({ route, onEdit, onDelete }: RouteCardProps) {
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
             <Navigation className="h-3.5 w-3.5 text-blue-600" />
-            Ordered Waypoints ({route.stops?.length || 0}):
+            Bus Stops ({route.stops?.length || 0}):
           </h3>
         </div>
 
         {!route.stops || route.stops.length === 0 ? (
           <p className="text-xs italic text-slate-600 font-medium">
-            No stop waypoints configured for this route yet. Click Edit Route to add stops.
+            No bus stops added to this route yet. Click Edit Route to add stops.
           </p>
         ) : (
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">

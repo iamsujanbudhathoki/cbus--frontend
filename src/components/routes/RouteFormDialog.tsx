@@ -89,10 +89,10 @@ export function RouteFormDialog({
       <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>
-            {editingRoute ? 'Edit Transport Route' : 'Add Transport Route'}
+            {editingRoute ? 'Edit Route' : 'Add Route'}
           </DialogTitle>
           <DialogDescription>
-            Configure route details and manage ordered stop waypoints.
+            Enter route details and add bus stops.
           </DialogDescription>
         </DialogHeader>
 
@@ -146,7 +146,7 @@ export function RouteFormDialog({
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                 <Navigation className="h-3.5 w-3.5 text-blue-600" />
-                2. Stop Waypoints ({fields.length})
+                2. Bus Stops ({fields.length})
               </h4>
 
               <Button
@@ -156,13 +156,13 @@ export function RouteFormDialog({
                 onClick={handleAddStopWaypoint}
               >
                 <Plus className="h-3.5 w-3.5 mr-1" />
-                Add Waypoint
+                Add Bus Stop
               </Button>
             </div>
 
             {fields.length === 0 ? (
               <div className="rounded-md border border-dashed border-slate-300 p-3 text-center">
-                <p className="text-xs text-slate-400">No waypoints added yet.</p>
+                <p className="text-xs text-slate-400">No bus stops added yet.</p>
               </div>
             ) : (
               <div className="space-y-2">

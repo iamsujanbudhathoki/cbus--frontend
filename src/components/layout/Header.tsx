@@ -73,10 +73,10 @@ export default function Header() {
   } else if (user.role === Role.COLLEGE) {
     navItems = [
       { label: 'Dashboard', href: '/college-admin/dashboard', icon: LayoutDashboard },
-      { label: 'Live Fleet Tracking', href: '/college-admin/live-tracking', icon: Navigation },
+      { label: 'Live Bus Tracking', href: '/college-admin/live-tracking', icon: Navigation },
       { label: 'Students', href: '/college-admin/students', icon: GraduationCap },
       { label: 'Parents', href: '/college-admin/parents', icon: Users },
-      { label: 'Fleet Buses', href: '/college-admin/buses', icon: Bus },
+      { label: 'Buses', href: '/college-admin/buses', icon: Bus },
       { label: 'Drivers', href: '/college-admin/drivers', icon: UserCheck },
       { label: 'Routes & Stops', href: '/college-admin/routes', icon: Route },
     ];

@@ -60,7 +60,7 @@ export function CollegeCreateDialog({
         <DialogHeader>
           <DialogTitle>Register New College</DialogTitle>
           <DialogDescription>
-            Setup institution profile and initial administrator account.
+            Set up college details and admin account.
           </DialogDescription>
         </DialogHeader>
 

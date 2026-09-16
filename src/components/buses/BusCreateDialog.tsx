@@ -51,15 +51,15 @@ export function BusCreateDialog({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add Fleet Bus</DialogTitle>
+          <DialogTitle>Add Bus</DialogTitle>
           <DialogDescription>
-            Enter vehicle identification and seating capacity details.
+            Enter bus number, plate number, and total seats.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           <div>
-            <Label required>Bus Identifier Number</Label>
+            <Label required>Bus Name / Number</Label>
             <Input
               type="text"
               {...register('busNumber')}
@@ -71,7 +71,7 @@ export function BusCreateDialog({
           </div>
 
           <div>
-            <Label required>Vehicle License Plate</Label>
+            <Label required>Bus Plate Number</Label>
             <Input
               type="text"
               {...register('registrationNumber')}
@@ -83,7 +83,7 @@ export function BusCreateDialog({
           </div>
 
           <div>
-            <Label required>Seating Capacity</Label>
+            <Label required>Total Seats</Label>
             <Input
               type="number"
               {...register('capacity', { valueAsNumber: true })}

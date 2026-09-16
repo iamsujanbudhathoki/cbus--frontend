@@ -92,12 +92,12 @@ export default function DriversPage() {
         <Sidebar />
         <main className="flex-1 p-4 md:p-6 space-y-4">
           <PageHeader
-            title="Driver Directory"
-            description="Manage vehicle drivers, credentials, and work session history"
+            title="Drivers"
+            description="Manage drivers, logins, and shift logs"
             action={
               <Button onClick={() => setIsCreateOpen(true)} size="sm" className="gap-1.5">
                 <Plus className="h-3.5 w-3.5" />
-                Add New Driver
+                Add Driver
               </Button>
             }
           />

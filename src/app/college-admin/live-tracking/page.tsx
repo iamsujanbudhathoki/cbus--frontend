@@ -91,8 +91,8 @@ export default function CollegeLiveTrackingPage() {
         <Sidebar />
         <main className="flex-1 p-4 md:p-6 space-y-4">
           <PageHeader
-            title="Live Fleet Tracking"
-            description="Real-time bus location updates and operational status"
+            title="Live Bus Tracking"
+            description="Real-time bus location tracking and status"
             action={
               <div className="flex items-center gap-2">
                 <Button
@@ -101,7 +101,7 @@ export default function CollegeLiveTrackingPage() {
                   onClick={() => {
                     setIsLoading(true);
                     fetchFleetTracking();
-                    toast.info('Refreshing live fleet positions...');
+                    toast.info('Refreshing live bus locations...');
                   }}
                 >
                   <RefreshCw className={`h-3.5 w-3.5 mr-1 ${isLoading ? 'animate-spin' : ''}`} />

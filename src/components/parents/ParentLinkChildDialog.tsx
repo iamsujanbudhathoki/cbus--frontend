@@ -91,7 +91,7 @@ export function ParentLinkChildDialog({
             Link Child to {selectedParentForLink?.name || 'Parent'}
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-500">
-            Select one or more student records to associate with this parent account.
+            Select students to link with this parent.
           </DialogDescription>
         </DialogHeader>
 

@@ -46,13 +46,13 @@ export function StudentAssignBusDialog({
         <DialogHeader>
           <DialogTitle>Assign Bus to {selectedStudent?.name}</DialogTitle>
           <DialogDescription>
-            Select a fleet bus for student transportation.
+            Select a bus for this student.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
-            <Label required>Select Fleet Bus</Label>
+            <Label required>Select Bus</Label>
             <Select value={selectedBusId} onValueChange={setSelectedBusId}>
               <SelectTrigger>
                 <SelectValue placeholder="Select bus..." />

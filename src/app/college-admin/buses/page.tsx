@@ -209,12 +209,12 @@ export default function BusesPage() {
         <Sidebar />
         <main className="flex-1 p-4 md:p-6 space-y-4">
           <PageHeader
-            title="Fleet Buses"
-            description="Manage vehicle fleet, driver assignments, and route links"
+            title="Buses"
+            description="Manage buses, driver assignments, and routes"
             action={
               <Button onClick={() => setIsCreateOpen(true)} size="sm" className="gap-1.5">
                 <Plus className="h-3.5 w-3.5" />
-                Add Fleet Bus
+                Add Bus
               </Button>
             }
           />

@@ -127,10 +127,10 @@ export default function LocationSimulatorModal({
 
         <div className="mt-4 space-y-4">
           <div>
-            <Label required className="mb-1.5">Select Target Bus</Label>
+            <Label required className="mb-1.5">Select Bus</Label>
             <Select value={selectedBusId} onValueChange={setSelectedBusId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select target bus..." />
+                <SelectValue placeholder="Select a bus..." />
               </SelectTrigger>
               <SelectContent>
                 {buses.map((b) => (
@@ -143,7 +143,7 @@ export default function LocationSimulatorModal({
           </div>
 
           <div className="rounded-xl bg-slate-50 p-3 border border-slate-200 text-xs">
-            <p className="font-semibold text-slate-700">Current Simulation Waypoint:</p>
+            <p className="font-semibold text-slate-700">Current Bus Stop:</p>
             <p className="text-blue-600 font-bold mt-1">
               Stop { (stepIndex % sampleWaypoints.length) + 1 }: {sampleWaypoints[stepIndex % sampleWaypoints.length].name}
             </p>

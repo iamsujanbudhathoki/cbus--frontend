@@ -52,7 +52,7 @@ export function StudentAssignStopDialog({
         <DialogHeader>
           <DialogTitle>Assign Route Stop to {selectedStudent?.name}</DialogTitle>
           <DialogDescription>
-            Select pickup and drop-off waypoint stop.
+            Select pickup and drop-off bus stop.
           </DialogDescription>
         </DialogHeader>
 

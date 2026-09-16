@@ -119,8 +119,8 @@ export default function RoutesPage() {
         <Sidebar />
         <main className="flex-1 p-4 md:p-6 space-y-4">
           <PageHeader
-            title="Route & Waypoint Builder"
-            description="Configure pickup routes and integrated stop waypoints"
+            title="Routes & Bus Stops"
+            description="Manage routes and bus stops"
             action={
               <Button onClick={handleOpenCreateModal} size="sm" className="gap-1.5">
                 <Plus className="h-3.5 w-3.5" />
@@ -138,8 +138,8 @@ export default function RoutesPage() {
               </div>
             ) : routes.length === 0 ? (
               <EmptyState
-                title="No Routes Configured"
-                description="Create transport routes and add pickup/drop waypoints in one step."
+                title="No Routes Created"
+                description="Create bus routes and add bus stops."
                 actionLabel="Add First Route"
                 onAction={handleOpenCreateModal}
               />

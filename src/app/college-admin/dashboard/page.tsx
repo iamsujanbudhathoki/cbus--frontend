@@ -50,13 +50,13 @@ export default function CollegeAdminDashboard() {
         <Sidebar />
         <main className="flex-1 p-4 md:p-6 space-y-5">
           <PageHeader
-            title={user?.college?.name || 'College Transportation Portal'}
-            description="Live fleet operations and student transport management"
+            title={user?.college?.name || 'College Dashboard'}
+            description="Overview of college buses, students, and live tracking"
             action={
               <Link href="/college-admin/live-tracking">
                 <Button size="sm" className="gap-2">
                   <Radio className="h-3.5 w-3.5 text-red-300 animate-pulse shrink-0" />
-                  Live Fleet Tracking Map
+                  Live Bus Map
                 </Button>
               </Link>
             }
@@ -70,17 +70,17 @@ export default function CollegeAdminDashboard() {
               icon={GraduationCap}
             />
             <StatWidget
-              title="Fleet Buses"
+              title="Total Buses"
               value={metrics?.totalBuses ?? '-'}
               icon={BusIcon}
             />
             <StatWidget
-              title="Active Moving Buses"
+              title="Moving Buses"
               value={metrics?.activeBuses ?? '-'}
               icon={Navigation}
             />
             <StatWidget
-              title="Transport Routes"
+              title="Bus Routes"
               value={metrics?.totalRoutes ?? '-'}
               icon={Route}
             />
@@ -90,11 +90,11 @@ export default function CollegeAdminDashboard() {
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-xs">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h2 className="text-sm font-bold text-slate-900">Fleet Bus Operational Status</h2>
-                <p className="text-xs font-medium text-slate-700">Overview of assigned drivers, routes, and live tracking</p>
+                <h2 className="text-sm font-bold text-slate-900">Bus Live Status</h2>
+                <p className="text-xs font-medium text-slate-700">Overview of drivers, routes, and live location</p>
               </div>
               <Link href="/college-admin/buses" className="text-xs font-bold text-blue-600 hover:underline inline-flex items-center gap-1">
-                Manage Fleet <ArrowRight className="h-3 w-3" />
+                Manage Buses <ArrowRight className="h-3 w-3" />
               </Link>
             </div>
 
@@ -106,9 +106,9 @@ export default function CollegeAdminDashboard() {
               </div>
             ) : buses.length === 0 ? (
               <EmptyState
-                title="No Fleet Buses Found"
-                description="Start by adding fleet buses and assigning drivers and routes."
-                actionLabel="Configure Fleet"
+                title="No Buses Added"
+                description="Start by adding buses and assigning drivers and routes."
+                actionLabel="Add Bus"
                 onAction={() => window.location.href = '/college-admin/buses'}
               />
             ) : (
