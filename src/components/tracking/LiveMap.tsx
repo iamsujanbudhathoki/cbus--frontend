@@ -23,6 +23,8 @@ export default function LiveMap({
   const leafletInstance = useRef<any>(null);
   const markersRef = useRef<{ [key: string]: any }>({});
   const polylineRef = useRef<any>(null);
+  const hasInitialFit = useRef<boolean>(false);
+  const routeMarkersRef = useRef<{ [key: string]: any }>({});
 
   useEffect(() => {
     if (typeof window === 'undefined' || !mapRef.current) return;
@@ -38,7 +40,7 @@ export default function LiveMap({
     });
 
     if (!leafletInstance.current) {
-      // Default center: Kathmandu (27.7172, 85.324)
+      // Default center: Kathmandu (27.6915, 85.3206)
       const map = L.map(mapRef.current).setView([27.6915, 85.3206], 13);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -51,12 +53,14 @@ export default function LiveMap({
 
     const map = leafletInstance.current;
 
-    // Clear existing markers
-    Object.values(markersRef.current).forEach((marker: any) => map.removeLayer(marker));
-    markersRef.current = {};
-    if (polylineRef.current) map.removeLayer(polylineRef.current);
+    // 1. Render Route Stops & Polyline
+    Object.values(routeMarkersRef.current).forEach((m: any) => map.removeLayer(m));
+    routeMarkersRef.current = {};
+    if (polylineRef.current) {
+      map.removeLayer(polylineRef.current);
+      polylineRef.current = null;
+    }
 
-    // Render Route Stops & Polyline
     if (routeStops && routeStops.length > 0) {
       const sortedStops = [...routeStops].sort((a, b) => a.sequence - b.sequence);
       const latLngs = sortedStops.map((stop) => [stop.latitude, stop.longitude]);
@@ -83,12 +87,23 @@ export default function LiveMap({
             <p style="margin: 0; font-size: 12px; color: #4b5563;">Est. Time: ${stop.estimatedTime || 'N/A'}</p>
           </div>
         `);
-        markersRef.current[`stop_${stop.id}`] = stopMarker;
+        routeMarkersRef.current[`stop_${stop.id}`] = stopMarker;
       });
     }
 
-    // Render Buses
+    // 2. Render & Update Bus Markers (Reuse existing markers for smooth movement without flicker)
+    const currentBusIds = new Set(buses.map((b) => b.id));
+
+    // Remove markers for buses that are no longer in active list
+    Object.keys(markersRef.current).forEach((busId) => {
+      if (!currentBusIds.has(busId)) {
+        map.removeLayer(markersRef.current[busId]);
+        delete markersRef.current[busId];
+      }
+    });
+
     const bounds: any[] = [];
+
     buses.forEach((bus) => {
       const lat = bus.tracking?.latitude || 27.6915;
       const lng = bus.tracking?.longitude || 85.3206;
@@ -127,8 +142,6 @@ export default function LiveMap({
         iconAnchor: [50, 18],
       });
 
-      const busMarker = L.marker([lat, lng], { icon: busIcon }).addTo(map);
-
       const driverName = bus.driver?.name || 'Unassigned';
       const routeName = bus.assignedRoute?.name || 'Unassigned Route';
       const speed = bus.tracking?.speed || 0;
@@ -136,7 +149,7 @@ export default function LiveMap({
         ? `${Math.round((Date.now() - bus.tracking.lastUpdated) / 1000)}s ago`
         : 'Never';
 
-      busMarker.bindPopup(`
+      const popupContent = `
         <div style="font-family: sans-serif; min-width: 180px;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
             <strong style="font-size: 14px;">${bus.busNumber}</strong>
@@ -148,18 +161,36 @@ export default function LiveMap({
           <p style="margin: 2px 0; font-size: 12px;"><strong>Speed:</strong> ${speed} km/h</p>
           <p style="margin: 2px 0; font-size: 12px; color: #6b7280;"><strong>Last Updated:</strong> ${updatedAgo}</p>
         </div>
-      `);
+      `;
 
-      busMarker.on('click', () => {
-        if (onSelectBus) onSelectBus(bus.id);
-      });
-
-      markersRef.current[bus.id] = busMarker;
+      if (markersRef.current[bus.id]) {
+        // Smoothly update existing marker position, icon, and popup
+        const existingMarker = markersRef.current[bus.id];
+        existingMarker.setLatLng([lat, lng]);
+        existingMarker.setIcon(busIcon);
+        if (existingMarker.getPopup()) {
+          existingMarker.getPopup().setContent(popupContent);
+        }
+      } else {
+        // Create new marker
+        const busMarker = L.marker([lat, lng], { icon: busIcon }).addTo(map);
+        busMarker.bindPopup(popupContent);
+        busMarker.on('click', () => {
+          if (onSelectBus) onSelectBus(bus.id);
+        });
+        markersRef.current[bus.id] = busMarker;
+      }
     });
 
-    // Fit bounds if buses exist
-    if (bounds.length > 0) {
+    // 3. Camera bounds logic: Only auto-fit bounds on initial load or when a specific bus is selected
+    if (selectedBusId) {
+      const selectedBus = buses.find((b) => b.id === selectedBusId);
+      if (selectedBus && selectedBus.tracking) {
+        map.panTo([selectedBus.tracking.latitude, selectedBus.tracking.longitude]);
+      }
+    } else if (!hasInitialFit.current && bounds.length > 0) {
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+      hasInitialFit.current = true;
     }
   }, [buses, routeStops, selectedBusId]);
 
