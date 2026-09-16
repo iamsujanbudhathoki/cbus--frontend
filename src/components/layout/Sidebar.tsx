@@ -55,12 +55,7 @@ export default function Sidebar() {
         isCollapsed ? 'w-16' : 'w-56'
       }`}
     >
-      <div className={`flex items-center justify-between px-2 py-1.5 mb-2 border-b border-slate-100 pb-2 ${isCollapsed ? 'justify-center' : ''}`}>
-        {!isCollapsed && (
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-            Navigation
-          </span>
-        )}
+      <div className={`flex items-center mb-2 border-b border-slate-100 pb-2 ${isCollapsed ? 'justify-center' : 'justify-end px-2 py-1.5'}`}>
         <button
           onClick={toggleSidebar}
           className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 hover:text-slate-800 cursor-pointer transition-colors"
