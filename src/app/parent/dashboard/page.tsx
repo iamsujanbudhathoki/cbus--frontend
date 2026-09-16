@@ -28,8 +28,8 @@ export default function ParentDashboard() {
         if (!selectedChild) {
           setSelectedChild(data.children[0]);
         }
-        const currentChild = selectedChild || data.children[0];
-        if (currentChild.assignedBus) {
+        const currentChild = selectedChild || (data.children && data.children.length > 0 ? data.children[0] : null);
+        if (currentChild?.assignedBus?.id) {
           const b = await api.getBusById(currentChild.assignedBus.id);
           setBusDetails(b);
         }

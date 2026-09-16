@@ -198,7 +198,7 @@ export function ParentLinkChildDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" variant="emerald" size="sm" disabled={isSubmitting}>
+            <Button type="submit" variant="emerald" size="sm" disabled={isSubmitting || !relationship || selectedStudentIds.length === 0}>
               {isSubmitting && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
               {selectedStudentIds.length > 1 ? `Link ${selectedStudentIds.length} Children` : 'Link Child'}
             </Button>

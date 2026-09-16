@@ -34,7 +34,7 @@ export default function ParentsPage() {
   const [isLinkOpen, setIsLinkOpen] = useState(false);
   const [selectedParentForLink, setSelectedParentForLink] = useState<Parent | null>(null);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
-  const [relationship, setRelationship] = useState('Father');
+  const [relationship, setRelationship] = useState('');
   const [linkErrorMsg, setLinkErrorMsg] = useState<string | null>(null);
 
   // Delete Confirmation Dialog State
@@ -216,6 +216,9 @@ export default function ParentsPage() {
             isOpen={isLinkOpen}
             onClose={() => {
               setIsLinkOpen(false);
+              setSelectedParentForLink(null);
+              setSelectedStudentIds([]);
+              setRelationship('');
               setLinkErrorMsg(null);
             }}
             selectedParentForLink={selectedParentForLink}

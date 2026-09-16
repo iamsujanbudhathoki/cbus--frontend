@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, use } from 'react';
+import React, { useEffect, useState, useMemo, use } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { Bus, College, Driver, Route, Student, Status } from '@/lib/types';
@@ -78,8 +78,19 @@ export default function CollegeDetailPage({ params }: { params: Promise<{ id: st
     status: Status.ACTIVE,
   });
 
-  const [selectedDriverId, setSelectedDriverId] = useState('');
-  const [selectedRouteId, setSelectedRouteId] = useState('');
+  const [selectedDriverId, setSelectedDriverId] = useState('none');
+  const [selectedRouteId, setSelectedRouteId] = useState('none');
+
+  const driverAssignmentMap = useMemo(() => {
+    const map = new Map<string, { busId: string; busNumber: string }>();
+    buses.forEach((b) => {
+      const dId = b.driverId || b.driver?.id;
+      if (dId) {
+        map.set(dId, { busId: b.id, busNumber: b.busNumber });
+      }
+    });
+    return map;
+  }, [buses]);
 
   const fetchCollegeData = async () => {
     if (!collegeId) return;
@@ -163,12 +174,20 @@ export default function CollegeDetailPage({ params }: { params: Promise<{ id: st
     if (!selectedBus) return;
     setIsSubmitting(true);
 
+    const driverIdToSave = selectedDriverId === 'none' || !selectedDriverId ? null : selectedDriverId;
+
     try {
       await api.updateBus(selectedBus.id, {
-        driverId: selectedDriverId,
+        driverId: driverIdToSave,
       });
-      toast.success(`Driver assigned to ${selectedBus.busNumber}`);
+      toast.success(
+        driverIdToSave
+          ? `Driver assigned to ${selectedBus.busNumber}`
+          : `Driver unassigned from ${selectedBus.busNumber}`
+      );
       setIsAssignDriverOpen(false);
+      setSelectedBus(null);
+      setSelectedDriverId('none');
       fetchCollegeData();
     } catch (err: any) {
       toast.error(err.message || 'Failed to assign driver');
@@ -442,12 +461,12 @@ export default function CollegeDetailPage({ params }: { params: Promise<{ id: st
                     searchTerm={searchTerm}
                     onAssignDriver={(b) => {
                       setSelectedBus(b);
-                      setSelectedDriverId(b.driverId || drivers[0]?.id || '');
+                      setSelectedDriverId(b.driverId || b.driver?.id || 'none');
                       setIsAssignDriverOpen(true);
                     }}
                     onAssignRoute={(b) => {
                       setSelectedBus(b);
-                      setSelectedRouteId(b.assignedRoute?.id || routes[0]?.id || '');
+                      setSelectedRouteId(b.assignedRoute?.id || 'none');
                       setIsAssignRouteOpen(true);
                     }}
                     onUnassignDriver={async (b) => {
@@ -606,12 +625,16 @@ export default function CollegeDetailPage({ params }: { params: Promise<{ id: st
           {/* Assign Driver Modal */}
           <BusAssignDriverDialog
             isOpen={isAssignDriverOpen}
-            onClose={() => setIsAssignDriverOpen(false)}
+            onClose={() => {
+              setIsAssignDriverOpen(false);
+              setSelectedBus(null);
+              setSelectedDriverId('none');
+            }}
             selectedBus={selectedBus}
             selectedDriverId={selectedDriverId}
             setSelectedDriverId={setSelectedDriverId}
             drivers={drivers}
-            driverAssignmentMap={new Map()}
+            driverAssignmentMap={driverAssignmentMap}
             onSubmit={handleAssignDriverSubmit}
             isSubmitting={isSubmitting}
           />
@@ -619,7 +642,11 @@ export default function CollegeDetailPage({ params }: { params: Promise<{ id: st
           {/* Assign Route Modal */}
           <BusAssignRouteDialog
             isOpen={isAssignRouteOpen}
-            onClose={() => setIsAssignRouteOpen(false)}
+            onClose={() => {
+              setIsAssignRouteOpen(false);
+              setSelectedBus(null);
+              setSelectedRouteId('none');
+            }}
             selectedBus={selectedBus}
             selectedRouteId={selectedRouteId}
             setSelectedRouteId={setSelectedRouteId}

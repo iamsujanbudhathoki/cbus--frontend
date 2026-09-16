@@ -237,7 +237,7 @@ export default function BusesPage() {
               }}
               onAssignRoute={(b) => {
                 setSelectedBus(b);
-                setSelectedRouteId(b.assignedRoute?.id || routes[0]?.id || '');
+                setSelectedRouteId(b.assignedRoute?.id || 'none');
                 setIsAssignRouteOpen(true);
               }}
               onUnassignDriver={(b) => setUnassignDriverTarget(b)}

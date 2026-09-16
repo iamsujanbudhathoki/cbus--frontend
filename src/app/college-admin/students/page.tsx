@@ -82,14 +82,18 @@ export default function StudentsPage() {
     if (!selectedStudent || !user?.collegeId) return;
     setIsSubmitting(true);
 
+    const busIdToSave = selectedBusId === 'none' || !selectedBusId ? null : selectedBusId;
+
     try {
       await api.assignStudentBus({
         studentId: selectedStudent.id,
-        busId: selectedBusId,
+        busId: busIdToSave as any,
         collegeId: user.collegeId,
       });
-      toast.success(`Bus assigned to ${selectedStudent.name}`);
+      toast.success(busIdToSave ? `Bus assigned to ${selectedStudent.name}` : `Bus unassigned from ${selectedStudent.name}`);
       setIsAssignBusOpen(false);
+      setSelectedStudent(null);
+      setSelectedBusId('none');
       fetchAllData();
     } catch (e: any) {
       toast.error(e.message || 'Failed to assign bus');
@@ -111,6 +115,9 @@ export default function StudentsPage() {
       });
       toast.success(`Route stop assigned to ${selectedStudent.name}`);
       setIsAssignStopOpen(false);
+      setSelectedStudent(null);
+      setSelectedRouteId('none');
+      setSelectedStopId('');
       fetchAllData();
     } catch (e: any) {
       toast.error(e.message || 'Failed to assign stop');
@@ -155,16 +162,13 @@ export default function StudentsPage() {
               searchTerm={searchTerm}
               onAssignBus={(s) => {
                 setSelectedStudent(s);
-                setSelectedBusId(s.assignedBus?.id || buses[0]?.id || '');
+                setSelectedBusId(s.assignedBus?.id || 'none');
                 setIsAssignBusOpen(true);
               }}
               onAssignStop={(s) => {
                 setSelectedStudent(s);
-                const assignedRouteId = s.assignedBus?.assignedRoute?.id || routes[0]?.id || '';
-                const targetRoute = routes.find((r) => r.id === assignedRouteId) || routes[0];
-                const initialStopId = targetRoute?.stops?.[0]?.id || '';
-                setSelectedRouteId(assignedRouteId);
-                setSelectedStopId(initialStopId);
+                setSelectedRouteId(s.assignedBus?.assignedRoute?.id || s.assignedRoute?.id || 'none');
+                setSelectedStopId(s.assignedStop?.id || '');
                 setIsAssignStopOpen(true);
               }}
               onAddStudent={() => setIsCreateOpen(true)}
@@ -180,7 +184,11 @@ export default function StudentsPage() {
 
           <StudentAssignBusDialog
             isOpen={isAssignBusOpen}
-            onClose={() => setIsAssignBusOpen(false)}
+            onClose={() => {
+              setIsAssignBusOpen(false);
+              setSelectedStudent(null);
+              setSelectedBusId('none');
+            }}
             selectedStudent={selectedStudent}
             selectedBusId={selectedBusId}
             setSelectedBusId={setSelectedBusId}
@@ -191,7 +199,12 @@ export default function StudentsPage() {
 
           <StudentAssignStopDialog
             isOpen={isAssignStopOpen}
-            onClose={() => setIsAssignStopOpen(false)}
+            onClose={() => {
+              setIsAssignStopOpen(false);
+              setSelectedStudent(null);
+              setSelectedRouteId('none');
+              setSelectedStopId('');
+            }}
             selectedStudent={selectedStudent}
             selectedRouteId={selectedRouteId}
             setSelectedRouteId={setSelectedRouteId}

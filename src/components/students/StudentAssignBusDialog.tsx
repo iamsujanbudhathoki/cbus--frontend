@@ -58,6 +58,9 @@ export function StudentAssignBusDialog({
                 <SelectValue placeholder="Select bus..." />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="none" className="text-slate-500">
+                  🚫 Unassigned (No Bus)
+                </SelectItem>
                 {buses.map((b) => (
                   <SelectItem key={b.id} value={b.id}>
                     {b.busNumber} ({b.vehicleNumber}) - Route: {b.assignedRoute?.name || 'No Route'}

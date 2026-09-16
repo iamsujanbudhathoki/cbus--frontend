@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { useSidebar } from '@/lib/sidebar-context';
 import { Role } from '@/lib/types';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
@@ -22,15 +21,12 @@ import {
   Shield,
   Phone,
   Mail,
-  PanelLeftClose,
-  PanelLeftOpen,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 export default function Header() {
   const { user, logout } = useAuth();
-  const { isCollapsed, toggleSidebar } = useSidebar();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
@@ -101,16 +97,6 @@ export default function Header() {
             aria-label="Toggle navigation menu"
           >
             {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-          </button>
-
-          {/* Desktop sidebar collapse trigger */}
-          <button
-            onClick={toggleSidebar}
-            className="hidden md:flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 cursor-pointer transition-colors"
-            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            aria-label="Toggle sidebar collapse"
-          >
-            {isCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
           </button>
 
           <Link href={dashboardHref} className="flex items-center gap-2.5 group">

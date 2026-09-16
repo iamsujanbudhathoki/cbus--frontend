@@ -58,6 +58,9 @@ export function BusAssignRouteDialog({
                 <SelectValue placeholder="Select route..." />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="none" className="text-slate-500">
+                  🚫 Unassigned (No Route)
+                </SelectItem>
                 {routes.map((r) => (
                   <SelectItem key={r.id} value={r.id}>
                     {r.name} ({r.stops?.length || 0} Stops)

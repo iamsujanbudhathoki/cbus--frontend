@@ -36,7 +36,7 @@ export default function LocationSimulatorModal({
   onClose,
   onLocationUpdated,
 }: LocationSimulatorModalProps) {
-  const [selectedBusId, setSelectedBusId] = useState<string>(buses[0]?.id || '');
+  const [selectedBusId, setSelectedBusId] = useState<string>('');
   const [stepIndex, setStepIndex] = useState<number>(0);
   const [isAutoSimulating, setIsAutoSimulating] = useState<boolean>(false);
   const [intervalId, setIntervalId] = useState<any>(null);
@@ -45,7 +45,7 @@ export default function LocationSimulatorModal({
 
   if (!isOpen) return null;
 
-  const currentBus = buses.find((b) => b.id === selectedBusId) || buses[0];
+  const currentBus = buses.find((b) => b.id === selectedBusId) || null;
 
   const handleStepSimulate = async () => {
     if (!currentBus) return;
@@ -162,7 +162,7 @@ export default function LocationSimulatorModal({
           <div className="flex items-center gap-3 pt-2">
             <button
               onClick={handleStepSimulate}
-              disabled={isUpdating || isAutoSimulating}
+              disabled={isUpdating || isAutoSimulating || !currentBus}
               className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 cursor-pointer disabled:opacity-50 active:scale-95 transition-all"
             >
               <RefreshCw className={`h-4 w-4 ${isUpdating ? 'animate-spin' : ''}`} />
@@ -180,7 +180,8 @@ export default function LocationSimulatorModal({
             ) : (
               <button
                 onClick={startAutoSimulation}
-                className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 cursor-pointer active:scale-95 transition-all"
+                disabled={!currentBus}
+                className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 cursor-pointer disabled:opacity-50 active:scale-95 transition-all"
               >
                 <Play className="h-4 w-4" />
                 Auto Loop

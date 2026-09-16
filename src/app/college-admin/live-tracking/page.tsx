@@ -36,9 +36,6 @@ export default function CollegeLiveTrackingPage() {
     try {
       const data = await api.getBuses(user.collegeId);
       setBuses(data);
-      if (!selectedBusId && data.length > 0) {
-        setSelectedBusId(data[0].id);
-      }
     } catch (e: any) {
       toast.error('Failed to fetch fleet tracking');
     } finally {
@@ -84,7 +81,7 @@ export default function CollegeLiveTrackingPage() {
     return () => unsub();
   }, []);
 
-  const selectedBus = buses.find((b) => b.id === selectedBusId) || buses[0];
+  const selectedBus = buses.find((b) => b.id === selectedBusId) || null;
   const routeStops = selectedBus?.assignedRoute?.stops || [];
 
   return (
