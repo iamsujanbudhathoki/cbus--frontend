@@ -88,26 +88,28 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white/95 px-4 md:px-6 backdrop-blur-md">
+      <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between border-b border-slate-200 bg-white px-4 md:px-6">
         <div className="flex items-center gap-3">
           {/* Mobile menu trigger */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 cursor-pointer md:hidden active:scale-95 transition-all"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 cursor-pointer md:hidden transition-colors"
             aria-label="Toggle navigation menu"
           >
-            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </button>
 
           <Link href={dashboardHref} className="flex items-center gap-2.5 group">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md shadow-blue-500/20 shrink-0 group-hover:scale-105 transition-all">
-              <span className="text-xl">🚌</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white border border-slate-200 shadow-sm shrink-0 overflow-hidden">
+              <img src="/busapp-logo.jpg" alt="Bus App Logo" className="h-full w-full object-cover" />
             </div>
-            <div>
-              <h1 className="text-base font-bold text-slate-900 leading-tight group-hover:text-blue-600 transition-colors">
+            <div className="flex items-baseline gap-2">
+              <span className="text-sm font-bold text-slate-900 tracking-tight">
                 BusTracker Pro
-              </h1>
-              <p className="text-xs font-medium text-slate-500 truncate max-w-[140px] sm:max-w-none">{roleLabel}</p>
+              </span>
+              <span className="hidden sm:inline-block text-[10px] font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-300 truncate max-w-[160px]">
+                {roleLabel}
+              </span>
             </div>
           </Link>
         </div>
@@ -116,57 +118,49 @@ export default function Header() {
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-            className="flex items-center gap-3 rounded-full bg-slate-100/80 p-1.5 pr-3.5 border border-slate-200/80 hover:bg-slate-200/60 hover:border-slate-300 transition-all cursor-pointer active:scale-95"
+            className="flex items-center gap-2 rounded-md border border-slate-300 bg-white p-1.5 pr-2.5 hover:bg-slate-50 transition-colors cursor-pointer text-xs"
             aria-expanded={isProfileDropdownOpen}
             aria-label="User profile menu"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-xs font-bold text-white shadow-sm shrink-0">
+            <div className="flex h-6 w-6 items-center justify-center rounded bg-slate-900 text-[10px] font-bold text-white shrink-0">
               {user.name ? user.name[0].toUpperCase() : 'U'}
             </div>
-            <div className="hidden sm:block text-left text-xs">
-              <p className="font-bold text-slate-900 leading-tight">{user.name}</p>
-              <p className="text-[10px] font-semibold text-slate-500 truncate max-w-[120px]">
-                {user.role === Role.ADMIN ? 'Administrator' : user.email}
-              </p>
+            <div className="hidden sm:block text-left">
+              <p className="font-semibold text-slate-900 leading-none">{user.name}</p>
             </div>
-            <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${isProfileDropdownOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`h-3.5 w-3.5 text-slate-700 transition-transform duration-150 ${isProfileDropdownOpen ? 'rotate-180' : ''}`} />
           </button>
 
-          {/* Profile Dropdown Card */}
+          {/* Profile Dropdown Menu */}
           {isProfileDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-72 rounded-2xl bg-white p-3 shadow-2xl border border-slate-100 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+            <div className="absolute right-0 mt-1.5 w-64 rounded-lg bg-white p-2 shadow-md border border-slate-200 z-50 text-xs">
               {/* User Identity Header */}
-              <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-3 border border-slate-100 mb-2">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-base font-black text-white shadow-md shadow-blue-500/20 shrink-0">
-                  {user.name ? user.name[0].toUpperCase() : 'U'}
-                </div>
-                <div className="overflow-hidden">
-                  <p className="font-extrabold text-sm text-slate-900 truncate">{user.name}</p>
-                  <p className="text-xs text-slate-500 truncate flex items-center gap-1 mt-0.5">
-                    <Mail className="h-3 w-3 shrink-0 text-slate-400" />
-                    {user.email}
-                  </p>
-                  <div className="mt-1">
-                    <span className="inline-flex items-center gap-1 font-mono text-[10px] font-extrabold text-blue-700 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                      <Shield className="h-2.5 w-2.5" />
-                      {user.role}
-                    </span>
-                  </div>
+              <div className="rounded-md bg-slate-50 p-2.5 border border-slate-200 mb-1.5">
+                <p className="font-bold text-slate-900 truncate">{user.name}</p>
+                <p className="text-[11px] text-slate-700 font-medium truncate flex items-center gap-1 mt-0.5">
+                  <Mail className="h-3 w-3 shrink-0 text-slate-600" />
+                  {user.email}
+                </p>
+                <div className="mt-1.5">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-800 bg-white border border-slate-300 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                    <Shield className="h-2.5 w-2.5 text-slate-700" />
+                    {user.role}
+                  </span>
                 </div>
               </div>
 
               {/* Extra Account Info if available */}
               {(user.phoneNumber || user.collegeName) && (
-                <div className="px-3 py-1.5 text-xs text-slate-500 space-y-1 border-b border-slate-100 pb-2 mb-2">
+                <div className="px-2 py-1.5 text-[11px] text-slate-700 space-y-1 border-b border-slate-100 pb-1.5 mb-1.5">
                   {user.collegeName && (
-                    <p className="flex items-center gap-1.5 text-slate-700 font-medium truncate">
+                    <p className="flex items-center gap-1.5 text-slate-800 font-semibold truncate">
                       <School className="h-3.5 w-3.5 text-blue-600 shrink-0" />
                       {user.collegeName}
                     </p>
                   )}
                   {user.phoneNumber && (
-                    <p className="flex items-center gap-1.5 text-slate-600">
-                      <Phone className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <p className="flex items-center gap-1.5 text-slate-700 font-medium">
+                      <Phone className="h-3.5 w-3.5 text-slate-600 shrink-0" />
                       {user.phoneNumber}
                     </p>
                   )}
@@ -174,28 +168,28 @@ export default function Header() {
               )}
 
               {/* Navigation Options */}
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 <Link
                   href={dashboardHref}
                   onClick={() => setIsProfileDropdownOpen(false)}
-                  className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-700 transition-colors cursor-pointer"
+                  className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer font-medium"
                 >
-                  <LayoutDashboard className="h-4 w-4 text-blue-600" />
+                  <LayoutDashboard className="h-3.5 w-3.5 text-slate-500" />
                   Main Dashboard
                 </Link>
               </div>
 
               {/* Divider & Logout Action */}
-              <div className="mt-2 border-t border-slate-100 pt-2">
+              <div className="mt-1.5 border-t border-slate-100 pt-1.5">
                 <button
                   onClick={() => {
                     setIsProfileDropdownOpen(false);
                     setIsLogoutConfirmOpen(true);
                   }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors cursor-pointer active:scale-95"
+                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
                 >
-                  <LogOut className="h-4 w-4 text-red-600" />
-                  Sign Out of Account
+                  <LogOut className="h-3.5 w-3.5 text-red-600" />
+                  Sign Out
                 </button>
               </div>
             </div>
@@ -207,30 +201,30 @@ export default function Header() {
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-40 flex md:hidden">
           <div
-            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
             onClick={() => setMobileMenuOpen(false)}
           />
-          <div className="relative flex w-4/5 max-w-xs flex-col bg-white p-5 shadow-2xl z-50">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+          <div className="relative flex w-64 flex-col bg-white p-4 shadow-xl z-50 border-r border-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
               <div className="flex items-center gap-2">
-                <span className="text-2xl">🚌</span>
-                <span className="font-bold text-slate-900">Navigation</span>
+                <img src="/busapp-logo.jpg" alt="Bus App Logo" className="h-6 w-6 rounded-md object-cover border border-slate-200" />
+                <span className="text-base font-bold text-slate-900">Navigation</span>
               </div>
               <button
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 cursor-pointer"
+                className="rounded-md p-1 text-slate-400 hover:bg-slate-100 cursor-pointer"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="mb-4 rounded-xl bg-slate-50 p-3 border border-slate-100">
-              <p className="text-xs font-semibold text-slate-800">{user.name}</p>
-              <p className="text-[11px] text-slate-500">{user.email}</p>
-              <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-blue-600">{roleLabel}</p>
+            <div className="mb-3 rounded-md bg-slate-50 p-2.5 border border-slate-200">
+              <p className="text-xs font-bold text-slate-900">{user.name}</p>
+              <p className="text-[11px] text-slate-500 truncate">{user.email}</p>
+              <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-blue-700">{roleLabel}</p>
             </div>
 
-            <nav className="space-y-1.5 flex-1 overflow-y-auto">
+            <nav className="space-y-1 flex-1 overflow-y-auto">
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname.startsWith(item.href);
@@ -240,29 +234,29 @@ export default function Header() {
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all cursor-pointer ${
+                    className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-xs font-medium transition-colors cursor-pointer ${
                       isActive
-                        ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                        ? 'bg-blue-50 text-blue-700 font-semibold border-l-2 border-blue-600'
+                        : 'text-slate-600 hover:bg-slate-100'
                     }`}
                   >
-                    <Icon className="h-5 w-5 shrink-0" />
+                    <Icon className="h-4 w-4 shrink-0 text-slate-500" />
                     <span>{item.label}</span>
                   </Link>
                 );
               })}
             </nav>
 
-            <div className="pt-4 border-t border-slate-100 mt-auto">
+            <div className="pt-3 border-t border-slate-100 mt-auto">
               <button
                 onClick={() => {
                   setMobileMenuOpen(false);
                   setIsLogoutConfirmOpen(true);
                 }}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 py-2.5 text-xs font-semibold text-red-600 cursor-pointer active:scale-95 transition-all"
+                className="flex w-full items-center justify-center gap-2 rounded-md border border-red-200 bg-red-50 py-2 text-xs font-semibold text-red-600 cursor-pointer hover:bg-red-100 transition-colors"
               >
-                <LogOut className="h-4 w-4" />
-                Logout
+                <LogOut className="h-3.5 w-3.5" />
+                Sign Out
               </button>
             </div>
           </div>
@@ -275,7 +269,7 @@ export default function Header() {
         onClose={() => setIsLogoutConfirmOpen(false)}
         onConfirm={logout}
         title="Sign Out Confirmation"
-        description="Are you sure you want to log out of your session? You will need to enter your credentials to sign in again."
+        description="Are you sure you want to log out of your session? You will need to sign in again to access the admin portal."
         confirmLabel="Sign Out"
         cancelLabel="Stay Signed In"
         variant="destructive"

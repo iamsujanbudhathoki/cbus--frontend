@@ -7,29 +7,30 @@ import { Bus, College, Driver, Route, Student, Status } from '@/lib/types';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
 import EmptyState from '@/components/shared/empty-state';
-import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { BusTable } from '@/components/buses/BusTable';
+import { BusCreateDialog } from '@/components/buses/BusCreateDialog';
+import { BusAssignDriverDialog } from '@/components/buses/BusAssignDriverDialog';
+import { BusAssignRouteDialog } from '@/components/buses/BusAssignRouteDialog';
+import { CollegeEditDialog } from '@/components/colleges/CollegeEditDialog';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from '@/components/ui/table';
 import {
   ArrowLeft,
-  School,
   Bus as BusIcon,
   GraduationCap,
-  Navigation,
   Plus,
-  CheckCircle,
-  XCircle,
   Route as RouteIcon,
-  X,
-  Loader2,
   Trash2,
-  Users,
   User,
   Search,
   MapPin,
@@ -75,12 +76,6 @@ export default function CollegeDetailPage({ params }: { params: Promise<{ id: st
     contactPhone: '',
     contactEmail: '',
     status: Status.ACTIVE,
-  });
-
-  const [busForm, setBusForm] = useState({
-    busNumber: '',
-    vehicleNumber: '',
-    capacity: 40,
   });
 
   const [selectedDriverId, setSelectedDriverId] = useState('');
@@ -142,19 +137,19 @@ export default function CollegeDetailPage({ params }: { params: Promise<{ id: st
     }
   };
 
-  const handleCreateBus = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreateBus = async (busForm: any) => {
     if (!collegeId) return;
     setIsSubmitting(true);
 
     try {
       await api.createBus({
         collegeId,
-        ...busForm,
+        busNumber: busForm.busNumber,
+        vehicleNumber: busForm.registrationNumber,
+        capacity: busForm.capacity,
       });
       toast.success(`Bus ${busForm.busNumber} created for ${college?.name || 'College'}`);
       setIsCreateBusOpen(false);
-      setBusForm({ busNumber: '', vehicleNumber: '', capacity: 40 });
       fetchCollegeData();
     } catch (err: any) {
       toast.error(err.message || 'Failed to create bus');
@@ -252,23 +247,22 @@ export default function CollegeDetailPage({ params }: { params: Promise<{ id: st
       <Header />
       <div className="flex flex-1">
         <Sidebar />
-        <main className="flex-1 p-4 md:p-8">
-          {/* Top Bar Navigation */}
-          <div className="flex items-center gap-3 mb-6">
+        <main className="flex-1 p-4 md:p-6 space-y-4">
+          <div className="flex items-center gap-2">
             <Link
               href="/super-admin/colleges"
-              className="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-blue-600 cursor-pointer transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-blue-600 transition-colors"
             >
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft className="h-3.5 w-3.5" />
               Back to Colleges Directory
             </Link>
           </div>
 
           {isLoading ? (
-            <div className="py-12 space-y-4">
-              <div className="h-8 w-1/3 bg-slate-200 rounded animate-pulse" />
-              <div className="h-24 w-full bg-slate-200 rounded-2xl animate-pulse" />
-              <div className="h-64 w-full bg-slate-200 rounded-2xl animate-pulse" />
+            <div className="py-8 space-y-3">
+              <div className="h-6 w-1/3 bg-slate-200 rounded animate-pulse" />
+              <div className="h-20 w-full bg-slate-200 rounded-lg animate-pulse" />
+              <div className="h-48 w-full bg-slate-200 rounded-lg animate-pulse" />
             </div>
           ) : !college ? (
             <EmptyState
@@ -278,36 +272,36 @@ export default function CollegeDetailPage({ params }: { params: Promise<{ id: st
               onAction={() => (window.location.href = '/super-admin/colleges')}
             />
           ) : (
-            <div className="space-y-6">
-              {/* Header Info Banner */}
-              <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-md shadow-blue-500/20 shrink-0 text-2xl font-bold">
+            <div className="space-y-4">
+              {/* Header Info Panel */}
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-600 text-white font-bold text-lg shrink-0">
                     🏫
                   </div>
                   <div>
-                    <div className="flex items-center gap-2.5">
-                      <h1 className="text-2xl font-extrabold text-slate-900">{college.name}</h1>
-                      <span className="font-mono text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full">
+                    <div className="flex items-center gap-2">
+                      <h1 className="text-xl font-bold text-slate-900">{college.name}</h1>
+                      <Badge variant="default" className="font-mono text-[10px]">
                         {college.code}
-                      </span>
+                      </Badge>
                     </div>
-                    <p className="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-4">
+                    <p className="text-xs text-slate-700 font-medium mt-0.5 flex flex-wrap items-center gap-3">
                       {college.address && (
                         <span className="inline-flex items-center gap-1">
-                          <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                          <MapPin className="h-3 w-3 text-slate-600" />
                           {college.address}
                         </span>
                       )}
                       {college.contactPhone && (
                         <span className="inline-flex items-center gap-1">
-                          <Phone className="h-3.5 w-3.5 text-slate-400" />
+                          <Phone className="h-3 w-3 text-slate-600" />
                           {college.contactPhone}
                         </span>
                       )}
                       {college.contactEmail && (
                         <span className="inline-flex items-center gap-1">
-                          <Mail className="h-3.5 w-3.5 text-slate-400" />
+                          <Mail className="h-3 w-3 text-slate-600" />
                           {college.contactEmail}
                         </span>
                       )}
@@ -315,255 +309,154 @@ export default function CollegeDetailPage({ params }: { params: Promise<{ id: st
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0">
-                  <span
-                    className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${
-                      college.status === Status.ACTIVE
-                        ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
-                        : 'bg-red-50 border border-red-200 text-red-700'
-                    }`}
-                  >
-                    {college.status === Status.ACTIVE ? (
-                      <CheckCircle className="h-3.5 w-3.5" />
-                    ) : (
-                      <XCircle className="h-3.5 w-3.5" />
-                    )}
+                <div className="flex items-center gap-2 shrink-0">
+                  <Badge variant={college.status === Status.ACTIVE ? 'emerald' : 'destructive'}>
                     {college.status}
-                  </span>
+                  </Badge>
 
-                  <button
+                  <Button
+                    size="sm"
+                    variant="outline"
                     onClick={() => setIsEditCollegeOpen(true)}
-                    className="flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 p-2 text-slate-700 hover:bg-slate-100 cursor-pointer active:scale-95 transition-all"
-                    title="Edit College Profile"
+                    title="Edit Profile"
                   >
-                    <Edit3 className="h-4 w-4 text-slate-500" />
-                  </button>
+                    <Edit3 className="h-3.5 w-3.5" />
+                  </Button>
 
-                  <button
+                  <Button
+                    size="sm"
                     onClick={() => setIsCreateBusOpen(true)}
-                    className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-blue-500/20 hover:bg-blue-700 cursor-pointer active:scale-95 transition-all"
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-3.5 w-3.5 mr-1" />
                     Add Bus
-                  </button>
+                  </Button>
                 </div>
               </div>
 
               {/* Metrics Summary */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <div
                   onClick={() => setActiveTab('buses')}
-                  className={`flex items-center gap-4 rounded-2xl bg-white p-5 shadow-sm border transition-all cursor-pointer ${
-                    activeTab === 'buses' ? 'border-blue-500 ring-2 ring-blue-500/10' : 'border-slate-200/80 hover:border-slate-300'
+                  className={`rounded-lg border bg-white p-3.5 shadow-xs transition-colors cursor-pointer ${
+                    activeTab === 'buses' ? 'border-blue-500 bg-blue-50/20' : 'border-slate-200 hover:border-slate-300'
                   }`}
                 >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600 shrink-0">
-                    <BusIcon className="h-6 w-6" />
+                  <div className="flex items-center gap-2 text-slate-800">
+                    <BusIcon className="h-4 w-4 text-blue-600 shrink-0" />
+                    <span className="text-xs font-semibold">Fleet Buses</span>
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold text-slate-500">Fleet Buses</p>
-                    <p className="text-2xl font-black text-slate-900">{metrics?.totalBuses ?? buses.length}</p>
-                  </div>
+                  <p className="text-xl font-bold text-slate-900 mt-1">{metrics?.totalBuses ?? buses.length}</p>
                 </div>
 
                 <div
                   onClick={() => setActiveTab('routes')}
-                  className={`flex items-center gap-4 rounded-2xl bg-white p-5 shadow-sm border transition-all cursor-pointer ${
-                    activeTab === 'routes' ? 'border-indigo-500 ring-2 ring-indigo-500/10' : 'border-slate-200/80 hover:border-slate-300'
+                  className={`rounded-lg border bg-white p-3.5 shadow-xs transition-colors cursor-pointer ${
+                    activeTab === 'routes' ? 'border-blue-500 bg-blue-50/20' : 'border-slate-200 hover:border-slate-300'
                   }`}
                 >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 shrink-0">
-                    <RouteIcon className="h-6 w-6" />
+                  <div className="flex items-center gap-2 text-slate-800">
+                    <RouteIcon className="h-4 w-4 text-indigo-600 shrink-0" />
+                    <span className="text-xs font-semibold">Transport Routes</span>
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold text-slate-500">Transport Routes</p>
-                    <p className="text-2xl font-black text-slate-900">{metrics?.totalRoutes ?? routes.length}</p>
-                  </div>
+                  <p className="text-xl font-bold text-slate-900 mt-1">{metrics?.totalRoutes ?? routes.length}</p>
                 </div>
 
                 <div
                   onClick={() => setActiveTab('drivers')}
-                  className={`flex items-center gap-4 rounded-2xl bg-white p-5 shadow-sm border transition-all cursor-pointer ${
-                    activeTab === 'drivers' ? 'border-emerald-500 ring-2 ring-emerald-500/10' : 'border-slate-200/80 hover:border-slate-300'
+                  className={`rounded-lg border bg-white p-3.5 shadow-xs transition-colors cursor-pointer ${
+                    activeTab === 'drivers' ? 'border-blue-500 bg-blue-50/20' : 'border-slate-200 hover:border-slate-300'
                   }`}
                 >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 shrink-0">
-                    <User className="h-6 w-6" />
+                  <div className="flex items-center gap-2 text-slate-800">
+                    <User className="h-4 w-4 text-emerald-600 shrink-0" />
+                    <span className="text-xs font-semibold">Fleet Drivers</span>
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold text-slate-500">Fleet Drivers</p>
-                    <p className="text-2xl font-black text-slate-900">{drivers.length}</p>
-                  </div>
+                  <p className="text-xl font-bold text-slate-900 mt-1">{drivers.length}</p>
                 </div>
 
                 <div
                   onClick={() => setActiveTab('students')}
-                  className={`flex items-center gap-4 rounded-2xl bg-white p-5 shadow-sm border transition-all cursor-pointer ${
-                    activeTab === 'students' ? 'border-amber-500 ring-2 ring-amber-500/10' : 'border-slate-200/80 hover:border-slate-300'
+                  className={`rounded-lg border bg-white p-3.5 shadow-xs transition-colors cursor-pointer ${
+                    activeTab === 'students' ? 'border-blue-500 bg-blue-50/20' : 'border-slate-200 hover:border-slate-300'
                   }`}
                 >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50 text-amber-600 shrink-0">
-                    <GraduationCap className="h-6 w-6" />
+                  <div className="flex items-center gap-2 text-slate-800">
+                    <GraduationCap className="h-4 w-4 text-amber-600 shrink-0" />
+                    <span className="text-xs font-semibold">Registered Students</span>
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold text-slate-500">Registered Students</p>
-                    <p className="text-2xl font-black text-slate-900">{metrics?.totalStudents ?? students.length}</p>
-                  </div>
+                  <p className="text-xl font-bold text-slate-900 mt-1">{metrics?.totalStudents ?? students.length}</p>
                 </div>
               </div>
 
               {/* Navigation Tabs & Search Controls */}
-              <div className="rounded-2xl bg-white p-6 shadow-sm border border-slate-200/80 space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-                  {/* Tab Navigation buttons */}
-                  <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
-                    <button
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-xs space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+                    <Button
+                      size="sm"
+                      variant={activeTab === 'buses' ? 'default' : 'ghost'}
                       onClick={() => { setActiveTab('buses'); setSearchTerm(''); }}
-                      className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${
-                        activeTab === 'buses'
-                          ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
                     >
-                      <BusIcon className="h-3.5 w-3.5" />
-                      Fleet Buses ({buses.length})
-                    </button>
-
-                    <button
+                      Buses ({buses.length})
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={activeTab === 'routes' ? 'default' : 'ghost'}
                       onClick={() => { setActiveTab('routes'); setSearchTerm(''); }}
-                      className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${
-                        activeTab === 'routes'
-                          ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
                     >
-                      <RouteIcon className="h-3.5 w-3.5" />
-                      Routes & Stops ({routes.length})
-                    </button>
-
-                    <button
+                      Routes ({routes.length})
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={activeTab === 'drivers' ? 'default' : 'ghost'}
                       onClick={() => { setActiveTab('drivers'); setSearchTerm(''); }}
-                      className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${
-                        activeTab === 'drivers'
-                          ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
                     >
-                      <User className="h-3.5 w-3.5" />
                       Drivers ({drivers.length})
-                    </button>
-
-                    <button
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={activeTab === 'students' ? 'default' : 'ghost'}
                       onClick={() => { setActiveTab('students'); setSearchTerm(''); }}
-                      className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${
-                        activeTab === 'students'
-                          ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
                     >
-                      <GraduationCap className="h-3.5 w-3.5" />
                       Students ({students.length})
-                    </button>
+                    </Button>
                   </div>
 
-                  {/* Search Bar */}
-                  <div className="relative w-full sm:w-64">
-                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                    <input
+                  <div className="relative w-full sm:w-56">
+                    <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                    <Input
                       type="text"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       placeholder={`Search ${activeTab}...`}
-                      className="w-full rounded-xl border border-slate-200 py-1.5 pl-9 pr-4 text-xs focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+                      className="pl-8"
                     />
                   </div>
                 </div>
 
                 {/* TAB 1: BUSES TABLE */}
                 {activeTab === 'buses' && (
-                  <div>
-                    {filteredBuses.length === 0 ? (
-                      <EmptyState
-                        title="No Buses Found"
-                        description={`No transport buses matched your criteria for ${college.name}.`}
-                        actionLabel="Add Bus"
-                        onAction={() => setIsCreateBusOpen(true)}
-                      />
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm text-slate-600">
-                          <thead className="bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">
-                            <tr>
-                              <th className="px-4 py-3.5">Bus Number</th>
-                              <th className="px-4 py-3.5">Vehicle Plate</th>
-                              <th className="px-4 py-3.5">Capacity</th>
-                              <th className="px-4 py-3.5">Assigned Driver</th>
-                              <th className="px-4 py-3.5">Assigned Route</th>
-                              <th className="px-4 py-3.5 text-right">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
-                            {filteredBuses.map((b) => (
-                              <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
-                                <td className="px-4 py-3.5 font-bold text-slate-900">{b.busNumber}</td>
-                                <td className="px-4 py-3.5 font-mono text-xs text-blue-600 font-bold">{b.vehicleNumber}</td>
-                                <td className="px-4 py-3.5 text-slate-600">{b.capacity} Seats</td>
-                                <td className="px-4 py-3.5 font-semibold text-slate-800">
-                                  {b.driver ? (
-                                    <span className="inline-flex items-center gap-1 text-emerald-700 font-bold bg-emerald-50 border border-emerald-200/60 px-2.5 py-0.5 rounded-full text-xs">
-                                      👤 {b.driver.name}
-                                    </span>
-                                  ) : (
-                                    <span className="text-slate-400 text-xs font-medium">Unassigned</span>
-                                  )}
-                                </td>
-                                <td className="px-4 py-3.5 font-semibold text-slate-800">
-                                  {b.assignedRoute ? (
-                                    <span className="inline-flex items-center gap-1 text-blue-700 font-bold bg-blue-50 border border-blue-200/60 px-2.5 py-0.5 rounded-full text-xs">
-                                      🛣️ {b.assignedRoute.name}
-                                    </span>
-                                  ) : (
-                                    <span className="text-slate-400 text-xs font-medium">Unassigned</span>
-                                  )}
-                                </td>
-                                <td className="px-4 py-3.5 text-right space-x-2 whitespace-nowrap">
-                                  <button
-                                    onClick={() => {
-                                      setSelectedBus(b);
-                                      setSelectedDriverId(b.driverId || drivers[0]?.id || '');
-                                      setIsAssignDriverOpen(true);
-                                    }}
-                                    className="rounded-lg bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100 cursor-pointer active:scale-95 transition-all"
-                                  >
-                                    Assign Driver
-                                  </button>
-
-                                  <button
-                                    onClick={() => {
-                                      setSelectedBus(b);
-                                      setSelectedRouteId(b.assignedRoute?.id || routes[0]?.id || '');
-                                      setIsAssignRouteOpen(true);
-                                    }}
-                                    className="rounded-lg bg-blue-50 border border-blue-200/80 px-2.5 py-1 text-xs font-bold text-blue-700 hover:bg-blue-100 cursor-pointer active:scale-95 transition-all"
-                                  >
-                                    Assign Route
-                                  </button>
-
-                                  <button
-                                    onClick={() => setDeleteConfirmBus({ id: b.id, busNumber: b.busNumber })}
-                                    className="rounded-lg bg-red-50 border border-red-200/80 p-1.5 text-red-600 hover:bg-red-100 cursor-pointer active:scale-95 transition-all inline-flex items-center justify-center align-middle"
-                                    title="Delete bus"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
+                  <BusTable
+                    buses={filteredBuses}
+                    isLoading={isLoading}
+                    searchTerm={searchTerm}
+                    onAssignDriver={(b) => {
+                      setSelectedBus(b);
+                      setSelectedDriverId(b.driverId || drivers[0]?.id || '');
+                      setIsAssignDriverOpen(true);
+                    }}
+                    onAssignRoute={(b) => {
+                      setSelectedBus(b);
+                      setSelectedRouteId(b.assignedRoute?.id || routes[0]?.id || '');
+                      setIsAssignRouteOpen(true);
+                    }}
+                    onUnassignDriver={async (b) => {
+                      await api.updateBus(b.id, { driverId: null });
+                      fetchCollegeData();
+                    }}
+                    onDeleteBus={(b) => setDeleteConfirmBus({ id: b.id, busNumber: b.busNumber })}
+                    onAddBus={() => setIsCreateBusOpen(true)}
+                  />
                 )}
 
                 {/* TAB 2: ROUTES TABLE */}
@@ -575,42 +468,32 @@ export default function CollegeDetailPage({ params }: { params: Promise<{ id: st
                         description={`No transport routes found for ${college.name}.`}
                       />
                     ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm text-slate-600">
-                          <thead className="bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">
-                            <tr>
-                              <th className="px-4 py-3.5">Route Name</th>
-                              <th className="px-4 py-3.5">Description</th>
-                              <th className="px-4 py-3.5">Stops Count</th>
-                              <th className="px-4 py-3.5">Status</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
-                            {filteredRoutes.map((r) => (
-                              <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
-                                <td className="px-4 py-3.5 font-bold text-slate-900">{r.name}</td>
-                                <td className="px-4 py-3.5 text-xs text-slate-500">{r.description || 'N/A'}</td>
-                                <td className="px-4 py-3.5">
-                                  <span className="font-bold text-indigo-600 bg-indigo-50 border border-indigo-200/60 px-2.5 py-0.5 rounded-full text-xs">
-                                    📍 {r.stops?.length || 0} Stops
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3.5">
-                                  <span
-                                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                                      r.status === Status.ACTIVE
-                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
-                                        : 'bg-red-50 text-red-700 border border-red-200/60'
-                                    }`}
-                                  >
-                                    {r.status}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Route Name</TableHead>
+                            <TableHead>Description</TableHead>
+                            <TableHead>Stops Count</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredRoutes.map((r) => (
+                            <TableRow key={r.id}>
+                              <TableCell className="font-bold text-slate-900">{r.name}</TableCell>
+                              <TableCell className="text-slate-600">{r.description || '-'}</TableCell>
+                              <TableCell>
+                                <Badge variant="default">📍 {r.stops?.length || 0} Stops</Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={r.status === Status.ACTIVE ? 'emerald' : 'destructive'}>
+                                  {r.status}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
                     )}
                   </div>
                 )}
@@ -624,38 +507,30 @@ export default function CollegeDetailPage({ params }: { params: Promise<{ id: st
                         description={`No bus drivers have been added for ${college.name}.`}
                       />
                     ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm text-slate-600">
-                          <thead className="bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">
-                            <tr>
-                              <th className="px-4 py-3.5">Driver Name</th>
-                              <th className="px-4 py-3.5">Phone</th>
-                              <th className="px-4 py-3.5">License Number</th>
-                              <th className="px-4 py-3.5">Status</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
-                            {filteredDrivers.map((d) => (
-                              <tr key={d.id} className="hover:bg-slate-50/80 transition-colors">
-                                <td className="px-4 py-3.5 font-bold text-slate-900">{d.name}</td>
-                                <td className="px-4 py-3.5 font-mono text-xs text-slate-700">{d.phone}</td>
-                                <td className="px-4 py-3.5 font-mono text-xs text-slate-500">{d.licenseNumber || 'N/A'}</td>
-                                <td className="px-4 py-3.5">
-                                  <span
-                                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                                      d.status === Status.ACTIVE
-                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
-                                        : 'bg-red-50 text-red-700 border border-red-200/60'
-                                    }`}
-                                  >
-                                    {d.status}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Driver Name</TableHead>
+                            <TableHead>Phone</TableHead>
+                            <TableHead>License Number</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredDrivers.map((d) => (
+                            <TableRow key={d.id}>
+                              <TableCell className="font-bold text-slate-900">{d.name}</TableCell>
+                              <TableCell className="font-mono text-slate-600">{d.phone}</TableCell>
+                              <TableCell className="font-mono text-slate-600">{d.licenseNumber || '-'}</TableCell>
+                              <TableCell>
+                                <Badge variant={d.status === Status.ACTIVE ? 'emerald' : 'destructive'}>
+                                  {d.status}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
                     )}
                   </div>
                 )}
@@ -669,50 +544,40 @@ export default function CollegeDetailPage({ params }: { params: Promise<{ id: st
                         description={`No students found for ${college.name}.`}
                       />
                     ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm text-slate-600">
-                          <thead className="bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">
-                            <tr>
-                              <th className="px-4 py-3.5">Student Name</th>
-                              <th className="px-4 py-3.5">Roll Number</th>
-                              <th className="px-4 py-3.5">Class & Section</th>
-                              <th className="px-4 py-3.5">Assigned Bus</th>
-                              <th className="px-4 py-3.5">Status</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
-                            {filteredStudents.map((s) => (
-                              <tr key={s.id} className="hover:bg-slate-50/80 transition-colors">
-                                <td className="px-4 py-3.5 font-bold text-slate-900">{s.name}</td>
-                                <td className="px-4 py-3.5 font-mono text-xs text-blue-600 font-bold">{s.rollNumber || 'N/A'}</td>
-                                <td className="px-4 py-3.5 text-xs text-slate-600">
-                                  {s.className ? `${s.className} ${s.section ? `(${s.section})` : ''}` : 'N/A'}
-                                </td>
-                                <td className="px-4 py-3.5 font-semibold text-slate-800">
-                                  {s.assignedBus ? (
-                                    <span className="inline-flex items-center gap-1 text-blue-700 font-bold bg-blue-50 border border-blue-200/60 px-2.5 py-0.5 rounded-full text-xs">
-                                      🚌 {s.assignedBus.busNumber}
-                                    </span>
-                                  ) : (
-                                    <span className="text-slate-400 text-xs font-medium">Unassigned</span>
-                                  )}
-                                </td>
-                                <td className="px-4 py-3.5">
-                                  <span
-                                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                                      s.status === Status.ACTIVE
-                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
-                                        : 'bg-red-50 text-red-700 border border-red-200/60'
-                                    }`}
-                                  >
-                                    {s.status}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Student Name</TableHead>
+                            <TableHead>Roll Number</TableHead>
+                            <TableHead>Class & Section</TableHead>
+                            <TableHead>Assigned Bus</TableHead>
+                            <TableHead>Status</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredStudents.map((s) => (
+                            <TableRow key={s.id}>
+                              <TableCell className="font-bold text-slate-900">{s.name}</TableCell>
+                              <TableCell className="font-mono text-slate-600">{s.rollNumber || '-'}</TableCell>
+                              <TableCell className="text-slate-600">
+                                {s.className ? `${s.className} ${s.section ? `(${s.section})` : ''}` : '-'}
+                              </TableCell>
+                              <TableCell>
+                                {s.assignedBus ? (
+                                  <Badge variant="emerald">🚌 {s.assignedBus.busNumber}</Badge>
+                                ) : (
+                                  <span className="text-slate-400 text-xs italic">Unassigned</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={s.status === Status.ACTIVE ? 'emerald' : 'destructive'}>
+                                  {s.status}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
                     )}
                   </div>
                 )}
@@ -721,311 +586,47 @@ export default function CollegeDetailPage({ params }: { params: Promise<{ id: st
           )}
 
           {/* Edit College Details Modal */}
-          {isEditCollegeOpen && college && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-              <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <h3 className="text-lg font-bold text-slate-900">Edit College Profile</h3>
-                  <button onClick={() => setIsEditCollegeOpen(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 cursor-pointer">
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-
-                <form onSubmit={handleEditCollege} className="mt-4 space-y-3">
-                  <div>
-                    <Label required className="mb-1">College Name</Label>
-                    <input
-                      type="text"
-                      required
-                      value={editCollegeForm.name}
-                      onChange={(e) => setEditCollegeForm({ ...editCollegeForm, name: e.target.value })}
-                      className="w-full rounded-xl border border-slate-300 p-2.5 text-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
-                    />
-                  </div>
-
-                  <div>
-                    <Label required className="mb-1">College Code</Label>
-                    <input
-                      type="text"
-                      required
-                      value={editCollegeForm.code}
-                      onChange={(e) => setEditCollegeForm({ ...editCollegeForm, code: e.target.value })}
-                      className="w-full rounded-xl border border-slate-300 p-2.5 text-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
-                    />
-                  </div>
-
-                  <div>
-                    <Label className="mb-1">Campus Address</Label>
-                    <input
-                      type="text"
-                      value={editCollegeForm.address}
-                      onChange={(e) => setEditCollegeForm({ ...editCollegeForm, address: e.target.value })}
-                      className="w-full rounded-xl border border-slate-300 p-2.5 text-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
-                    />
-                  </div>
-
-                  <div>
-                    <Label className="mb-1">Contact Phone</Label>
-                    <input
-                      type="text"
-                      value={editCollegeForm.contactPhone}
-                      onChange={(e) => setEditCollegeForm({ ...editCollegeForm, contactPhone: e.target.value })}
-                      className="w-full rounded-xl border border-slate-300 p-2.5 text-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
-                    />
-                  </div>
-
-                  <div>
-                    <Label className="mb-1">Contact Email</Label>
-                    <input
-                      type="email"
-                      value={editCollegeForm.contactEmail}
-                      onChange={(e) => setEditCollegeForm({ ...editCollegeForm, contactEmail: e.target.value })}
-                      className="w-full rounded-xl border border-slate-300 p-2.5 text-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
-                    />
-                  </div>
-
-                  <div>
-                    <Label className="mb-1">Institution Status</Label>
-                    <Select
-                      value={editCollegeForm.status}
-                      onValueChange={(val: Status) => setEditCollegeForm({ ...editCollegeForm, status: val })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={Status.ACTIVE}>ACTIVE</SelectItem>
-                        <SelectItem value={Status.INACTIVE}>INACTIVE</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                    <button
-                      type="button"
-                      disabled={isSubmitting}
-                      onClick={() => setIsEditCollegeOpen(false)}
-                      className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-5 py-2 text-xs font-semibold text-white hover:bg-blue-700 shadow-md shadow-blue-500/20 cursor-pointer active:scale-95 disabled:opacity-50"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        'Save Changes'
-                      )}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
+          <CollegeEditDialog
+            isOpen={isEditCollegeOpen}
+            onClose={() => setIsEditCollegeOpen(false)}
+            editCollegeForm={editCollegeForm}
+            setEditCollegeForm={setEditCollegeForm}
+            onSubmit={handleEditCollege}
+            isSubmitting={isSubmitting}
+          />
 
           {/* Create Bus Modal */}
-          {isCreateBusOpen && college && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-              <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <h3 className="text-lg font-bold text-slate-900">Add Bus to {college.name}</h3>
-                  <button onClick={() => setIsCreateBusOpen(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 cursor-pointer">
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-
-                <form onSubmit={handleCreateBus} className="mt-4 space-y-3">
-                  <div>
-                    <Label required className="mb-1">Bus Identifier Number</Label>
-                    <input
-                      type="text"
-                      required
-                      value={busForm.busNumber}
-                      onChange={(e) => setBusForm({ ...busForm, busNumber: e.target.value })}
-                      placeholder="BUS-101"
-                      className="mt-1 w-full rounded-xl border border-slate-300 p-2.5 text-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
-                    />
-                  </div>
-
-                  <div>
-                    <Label required className="mb-1">Vehicle License Plate</Label>
-                    <input
-                      type="text"
-                      required
-                      value={busForm.vehicleNumber}
-                      onChange={(e) => setBusForm({ ...busForm, vehicleNumber: e.target.value })}
-                      placeholder="BA 3 KHA 5678"
-                      className="mt-1 w-full rounded-xl border border-slate-300 p-2.5 text-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
-                    />
-                  </div>
-
-                  <div>
-                    <Label required className="mb-1">Seating Capacity</Label>
-                    <input
-                      type="number"
-                      value={busForm.capacity}
-                      onChange={(e) => setBusForm({ ...busForm, capacity: Number(e.target.value) })}
-                      placeholder="40"
-                      className="mt-1 w-full rounded-xl border border-slate-300 p-2.5 text-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                    <button
-                      type="button"
-                      disabled={isSubmitting}
-                      onClick={() => setIsCreateBusOpen(false)}
-                      className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-5 py-2 text-xs font-semibold text-white hover:bg-blue-700 shadow-md shadow-blue-500/20 cursor-pointer active:scale-95 disabled:opacity-50"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          Creating...
-                        </>
-                      ) : (
-                        'Add Bus'
-                      )}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
+          <BusCreateDialog
+            isOpen={isCreateBusOpen}
+            onClose={() => setIsCreateBusOpen(false)}
+            onSubmit={handleCreateBus}
+            isSubmitting={isSubmitting}
+          />
 
           {/* Assign Driver Modal */}
-          {isAssignDriverOpen && selectedBus && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-              <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <h3 className="text-lg font-bold text-slate-900">Assign Driver to {selectedBus.busNumber}</h3>
-                  <button onClick={() => setIsAssignDriverOpen(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 cursor-pointer">
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-
-                <form onSubmit={handleAssignDriverSubmit} className="mt-4 space-y-4">
-                  <div>
-                    <Label required className="mb-1.5">Select Driver</Label>
-                    <Select value={selectedDriverId} onValueChange={setSelectedDriverId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select driver..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {drivers.length === 0 ? (
-                          <SelectItem value="none" disabled>No drivers available for this college</SelectItem>
-                        ) : (
-                          drivers.map((d) => (
-                            <SelectItem key={d.id} value={d.id}>
-                              {d.name} ({d.phone})
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                    <button
-                      type="button"
-                      disabled={isSubmitting}
-                      onClick={() => setIsAssignDriverOpen(false)}
-                      className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isSubmitting || !selectedDriverId || selectedDriverId === 'none'}
-                      className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-5 py-2 text-xs font-semibold text-white hover:bg-emerald-700 shadow-md shadow-emerald-500/20 cursor-pointer active:scale-95 disabled:opacity-50"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          Assigning...
-                        </>
-                      ) : (
-                        'Assign Driver'
-                      )}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
+          <BusAssignDriverDialog
+            isOpen={isAssignDriverOpen}
+            onClose={() => setIsAssignDriverOpen(false)}
+            selectedBus={selectedBus}
+            selectedDriverId={selectedDriverId}
+            setSelectedDriverId={setSelectedDriverId}
+            drivers={drivers}
+            driverAssignmentMap={new Map()}
+            onSubmit={handleAssignDriverSubmit}
+            isSubmitting={isSubmitting}
+          />
 
           {/* Assign Route Modal */}
-          {isAssignRouteOpen && selectedBus && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-              <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-slate-100">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <h3 className="text-lg font-bold text-slate-900">Assign Route to {selectedBus.busNumber}</h3>
-                  <button onClick={() => setIsAssignRouteOpen(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 cursor-pointer">
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-
-                <form onSubmit={handleAssignRouteSubmit} className="mt-4 space-y-4">
-                  <div>
-                    <Label required className="mb-1.5">Select Route</Label>
-                    <Select value={selectedRouteId} onValueChange={setSelectedRouteId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select route..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {routes.length === 0 ? (
-                          <SelectItem value="none" disabled>No routes available for this college</SelectItem>
-                        ) : (
-                          routes.map((r) => (
-                            <SelectItem key={r.id} value={r.id}>
-                              {r.name} ({r.stops?.length || 0} Stops)
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                    <button
-                      type="button"
-                      disabled={isSubmitting}
-                      onClick={() => setIsAssignRouteOpen(false)}
-                      className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isSubmitting || !selectedRouteId || selectedRouteId === 'none'}
-                      className="flex items-center gap-1.5 rounded-xl bg-blue-600 px-5 py-2 text-xs font-semibold text-white hover:bg-blue-700 shadow-md shadow-blue-500/20 cursor-pointer active:scale-95 disabled:opacity-50"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          Assigning...
-                        </>
-                      ) : (
-                        'Assign Route'
-                      )}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
+          <BusAssignRouteDialog
+            isOpen={isAssignRouteOpen}
+            onClose={() => setIsAssignRouteOpen(false)}
+            selectedBus={selectedBus}
+            selectedRouteId={selectedRouteId}
+            setSelectedRouteId={setSelectedRouteId}
+            routes={routes}
+            onSubmit={handleAssignRouteSubmit}
+            isSubmitting={isSubmitting}
+          />
 
           {/* Delete Bus Confirmation Dialog */}
           <ConfirmDialog
@@ -1033,7 +634,7 @@ export default function CollegeDetailPage({ params }: { params: Promise<{ id: st
             onClose={() => setDeleteConfirmBus(null)}
             onConfirm={confirmDeleteBus}
             title="Delete Fleet Bus"
-            description={`Are you sure you want to delete bus "${deleteConfirmBus?.busNumber}"? This action cannot be undone and will remove all associated driver assignments and route tracking configuration.`}
+            description={`Are you sure you want to delete bus "${deleteConfirmBus?.busNumber}"?`}
             confirmLabel="Delete Bus"
             cancelLabel="Cancel"
             variant="destructive"

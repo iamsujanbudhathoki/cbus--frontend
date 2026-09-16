@@ -30,7 +30,7 @@ export default function Home() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-900 text-white">
       <div className="text-center">
-        <span className="text-4xl animate-bounce">🚌</span>
+        <img src="/busapp-logo.jpg" alt="Bus App Logo" className="h-16 w-16 rounded-2xl mx-auto border border-slate-700 shadow-lg object-cover animate-pulse" />
         <p className="mt-4 text-sm font-semibold">Redirecting to your BusTracker portal...</p>
       </div>
     </div>

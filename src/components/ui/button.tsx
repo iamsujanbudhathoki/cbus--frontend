@@ -4,27 +4,29 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl text-sm font-semibold cursor-pointer transition-all duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md text-xs font-semibold cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-3.5 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         default:
-          "bg-blue-600 text-white shadow-md shadow-blue-500/20 hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/30",
+          "bg-blue-600 text-white hover:bg-blue-700 shadow-xs",
+        dark:
+          "bg-slate-900 text-white hover:bg-slate-800 shadow-xs",
         destructive:
-          "bg-red-600 text-white shadow-sm hover:bg-red-700",
+          "bg-red-600 text-white hover:bg-red-700 shadow-xs",
         outline:
-          "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900 hover:border-gray-300",
+          "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 shadow-xs",
         secondary:
-          "bg-gray-100 text-gray-900 hover:bg-gray-200",
-        ghost: "hover:bg-gray-100 hover:text-gray-900",
-        link: "text-blue-600 underline-offset-4 hover:underline",
-        emerald: "bg-emerald-600 text-white shadow-md shadow-emerald-500/20 hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-500/30",
+          "bg-slate-100 text-slate-800 hover:bg-slate-200 border border-slate-200/80",
+        ghost: "text-slate-700 hover:bg-slate-100 hover:text-slate-900",
+        link: "text-blue-600 underline-offset-4 hover:underline p-0 h-auto",
+        emerald: "bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-8 rounded-lg px-3 text-xs",
-        lg: "h-12 rounded-xl px-8 text-base",
-        icon: "h-9 w-9 rounded-xl",
+        default: "h-9 px-3.5 py-2",
+        sm: "h-7 rounded-md px-2.5 text-xs",
+        lg: "h-10 rounded-md px-5 text-sm",
+        icon: "h-8 w-8 rounded-md",
       },
     },
     defaultVariants: {

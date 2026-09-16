@@ -6,11 +6,14 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
+import { Loader2 } from 'lucide-react';
+
 export interface MultiSelectOption {
   label: string;
   value: string;
   description?: string;
   badge?: string;
+  disabled?: boolean;
 }
 
 export interface MultiSelectProps {
@@ -22,6 +25,7 @@ export interface MultiSelectProps {
   emptyText?: string;
   className?: string;
   disabled?: boolean;
+  isLoading?: boolean;
   maxDisplay?: number;
   id?: string;
   error?: boolean;
@@ -36,6 +40,7 @@ export function MultiSelect({
   emptyText = 'No items found.',
   className,
   disabled = false,
+  isLoading = false,
   maxDisplay = 3,
   id,
   error = false,
@@ -181,17 +186,23 @@ export function MultiSelect({
         </div>
 
         <div className="flex items-center gap-1 shrink-0 ml-1">
-          {selectedOptions.length > 0 && !disabled && (
-            <button
-              type="button"
-              onClick={handleClearAll}
-              className="rounded-full p-0.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
-              title="Clear all"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
+          {isLoading ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />
+          ) : (
+            <>
+              {selectedOptions.length > 0 && !disabled && (
+                <button
+                  type="button"
+                  onClick={handleClearAll}
+                  className="rounded-full p-0.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                  title="Clear all"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+              <ChevronsUpDown className="h-3.5 w-3.5 text-slate-400" />
+            </>
           )}
-          <ChevronsUpDown className="h-3.5 w-3.5 text-slate-400" />
         </div>
       </div>
 

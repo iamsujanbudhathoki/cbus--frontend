@@ -10,6 +10,11 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Real-Time Bus Tracking Platform",
   description: "Live bus tracking and transport management for schools and colleges",
+  icons: {
+    icon: "/busapp-logo.jpg",
+    shortcut: "/busapp-logo.jpg",
+    apple: "/busapp-logo.jpg",
+  },
 };
 
 export default function RootLayout({

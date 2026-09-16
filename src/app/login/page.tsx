@@ -97,8 +97,8 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 p-4">
       <div className="w-full max-w-md rounded-3xl bg-white/95 p-6 sm:p-8 shadow-2xl backdrop-blur-lg">
         <div className="text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 shadow-lg shadow-blue-500/30">
-            <span className="text-3xl">🚌</span>
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white p-1 shadow-lg shadow-blue-500/20 border border-slate-200 overflow-hidden">
+            <img src="/busapp-logo.jpg" alt="Bus App Logo" className="h-full w-full object-cover rounded-xl" />
           </div>
           <h2 className="mt-4 text-2xl font-bold text-slate-900">Real-Time Bus Tracker</h2>
           <p className="mt-1 text-sm text-slate-500">Sign in to your school/college transport portal</p>

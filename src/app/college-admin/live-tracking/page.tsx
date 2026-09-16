@@ -3,12 +3,15 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import { Bus, RouteStop, TrackingStatus } from '@/lib/types';
+import { Bus, BusStatus, TrackingStatus } from '@/lib/types';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
 import LiveMap from '@/components/tracking/LiveMap';
 import LocationSimulatorModal from '@/components/tracking/LocationSimulatorModal';
+import { PageHeader } from '@/components/shared/page-header';
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -16,8 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Radio, RefreshCw, Navigation, Phone, User, Clock, Route } from 'lucide-react';
+import { Radio, RefreshCw, Phone, User, Route } from 'lucide-react';
 import { toast } from 'sonner';
+
+import { subscribeToAllBuses } from '@/lib/firebase';
 
 export default function CollegeLiveTrackingPage() {
   const { user } = useAuth();
@@ -47,6 +52,38 @@ export default function CollegeLiveTrackingPage() {
     return () => clearInterval(interval);
   }, [user]);
 
+  // Realtime Firebase Subscription for instant location updates
+  useEffect(() => {
+    const unsub = subscribeToAllBuses((busesMap) => {
+      if (!busesMap || Object.keys(busesMap).length === 0) return;
+      setBuses((prevBuses) =>
+        prevBuses.map((b) => {
+          const liveLoc = busesMap[b.id];
+          if (!liveLoc) return b;
+          return {
+            ...b,
+            tracking: {
+              busId: b.id,
+              latitude: liveLoc.latitude,
+              longitude: liveLoc.longitude,
+              speed: liveLoc.speed || 0,
+              heading: liveLoc.heading || 0,
+              lastUpdated: liveLoc.lastUpdated || Date.now(),
+              status: (liveLoc.status as BusStatus) || BusStatus.MOVING,
+              trackingStatus:
+                liveLoc.status === BusStatus.MOVING || liveLoc.status === TrackingStatus.LIVE
+                  ? TrackingStatus.LIVE
+                  : liveLoc.status === TrackingStatus.STALE
+                  ? TrackingStatus.STALE
+                  : TrackingStatus.OFFLINE,
+            },
+          };
+        })
+      );
+    });
+    return () => unsub();
+  }, []);
+
   const selectedBus = buses.find((b) => b.id === selectedBusId) || buses[0];
   const routeStops = selectedBus?.assignedRoute?.stops || [];
 
@@ -55,62 +92,57 @@ export default function CollegeLiveTrackingPage() {
       <Header />
       <div className="flex flex-1">
         <Sidebar />
-        <main className="flex-1 p-4 md:p-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
+        <main className="flex-1 p-4 md:p-6 space-y-4">
+          <PageHeader
+            title="Live Fleet Tracking"
+            description="Real-time bus location updates and operational status"
+            action={
               <div className="flex items-center gap-2">
-                <Radio className="h-5 w-5 text-red-500 animate-pulse shrink-0" />
-                <h1 className="text-2xl font-extrabold text-slate-900">Live Fleet Tracking Dashboard</h1>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setIsLoading(true);
+                    fetchFleetTracking();
+                    toast.info('Refreshing live fleet positions...');
+                  }}
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+
+                <Button
+                  size="sm"
+                  onClick={() => setIsSimulatorOpen(true)}
+                >
+                  <Radio className="h-3.5 w-3.5 mr-1 text-red-300 animate-pulse" />
+                  GPS Simulator
+                </Button>
               </div>
-              <p className="text-sm text-slate-500">Real-time bus location updates and operational status</p>
-            </div>
+            }
+          />
 
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => {
-                  setIsLoading(true);
-                  fetchFleetTracking();
-                  toast.info('Refreshing live fleet positions...');
-                }}
-                className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer active:scale-95 transition-all shadow-sm shrink-0"
-              >
-                <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-                Refresh Now
-              </button>
-
-              <button
-                onClick={() => setIsSimulatorOpen(true)}
-                className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-blue-500/20 hover:bg-blue-700 cursor-pointer active:scale-95 transition-all shrink-0"
-              >
-                <span>📡</span>
-                Open GPS Location Simulator
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             {/* Map Area */}
             <div className="lg:col-span-2">
-              <div className="rounded-2xl bg-white p-4 shadow-sm border border-slate-200/80">
+              <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-xs">
                 <LiveMap
                   buses={buses}
                   routeStops={routeStops}
                   selectedBusId={selectedBusId}
                   onSelectBus={(busId) => setSelectedBusId(busId)}
-                  height="550px"
+                  height="540px"
                 />
               </div>
             </div>
 
-            {/* Selected Bus Info & Stop Sequence Drawer */}
-            <div className="space-y-4">
+            {/* Selected Bus Inspector Drawer */}
+            <div className="space-y-3">
               {/* Bus Selector */}
-              <div className="rounded-2xl bg-white p-5 shadow-sm border border-slate-200/80">
-                <Label required className="mb-2 uppercase tracking-wider text-[11px] text-slate-500">
-                  Select Bus to Inspect
-                </Label>
+              <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-xs space-y-2">
+                <Label required>Select Bus to Inspect</Label>
                 <Select value={selectedBusId} onValueChange={setSelectedBusId}>
-                  <SelectTrigger className="font-bold text-slate-900">
+                  <SelectTrigger>
                     <SelectValue placeholder="Select bus to inspect..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -125,38 +157,36 @@ export default function CollegeLiveTrackingPage() {
 
               {/* Bus Status Card */}
               {selectedBus && (
-                <div className="rounded-2xl bg-white p-5 shadow-sm border border-slate-200/80 space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-xs space-y-3 text-xs">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                     <div>
-                      <h3 className="text-lg font-black text-slate-900">{selectedBus.busNumber}</h3>
-                      <p className="text-xs font-mono text-slate-500">{selectedBus.vehicleNumber}</p>
+                      <h3 className="text-base font-bold text-slate-900">{selectedBus.busNumber}</h3>
+                      <p className="font-mono text-[11px] text-slate-800 font-medium">{selectedBus.vehicleNumber}</p>
                     </div>
 
-                    <span
-                      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${
-                        selectedBus.tracking?.trackingStatus === TrackingStatus.LIVE
-                          ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                          : selectedBus.tracking?.trackingStatus === TrackingStatus.STALE
-                          ? 'bg-amber-50 border-amber-200 text-amber-700'
-                          : 'bg-slate-100 border-slate-200 text-slate-700'
-                      }`}
-                    >
-                      <span className={`h-2 w-2 rounded-full ${
-                        selectedBus.tracking?.trackingStatus === TrackingStatus.LIVE ? 'bg-emerald-500 animate-ping' : 'bg-slate-400'
+                    <Badge variant={
+                      selectedBus.tracking?.trackingStatus === TrackingStatus.LIVE
+                        ? 'emerald'
+                        : selectedBus.tracking?.trackingStatus === TrackingStatus.STALE
+                        ? 'yellow'
+                        : 'secondary'
+                    }>
+                      <span className={`h-1.5 w-1.5 rounded-full ${
+                        selectedBus.tracking?.trackingStatus === TrackingStatus.LIVE ? 'bg-emerald-500 animate-pulse' : 'bg-slate-500'
                       }`} />
                       {selectedBus.tracking?.trackingStatus || TrackingStatus.OFFLINE}
-                    </span>
+                    </Badge>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div className="rounded-xl bg-slate-50 p-3 border border-slate-200/60">
-                      <p className="text-slate-500 font-medium">Speed</p>
-                      <p className="text-base font-bold text-slate-900 mt-0.5">{selectedBus.tracking?.speed || 0} km/h</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-md bg-slate-50 p-2.5 border border-slate-200">
+                      <p className="text-slate-700 font-semibold text-[11px]">Speed</p>
+                      <p className="text-sm font-bold text-slate-900 mt-0.5">{selectedBus.tracking?.speed || 0} km/h</p>
                     </div>
 
-                    <div className="rounded-xl bg-slate-50 p-3 border border-slate-200/60">
-                      <p className="text-slate-500 font-medium">Last Location Sync</p>
-                      <p className="text-xs font-bold text-slate-900 mt-1.5">
+                    <div className="rounded-md bg-slate-50 p-2.5 border border-slate-200">
+                      <p className="text-slate-700 font-semibold text-[11px]">Sync Time</p>
+                      <p className="text-xs font-bold text-slate-900 mt-1">
                         {selectedBus.tracking?.lastUpdated
                           ? `${Math.max(0, Math.round((Date.now() - selectedBus.tracking.lastUpdated) / 1000))}s ago`
                           : 'Never'}
@@ -164,39 +194,39 @@ export default function CollegeLiveTrackingPage() {
                     </div>
                   </div>
 
-                  <div className="space-y-2 text-xs">
-                    <div className="flex items-center gap-2 text-slate-700">
-                      <User className="h-4 w-4 text-slate-400 shrink-0" />
-                      <span><strong>Driver:</strong> {selectedBus.driver?.name || 'Unassigned'}</span>
+                  <div className="space-y-1.5 text-slate-900 font-medium">
+                    <div className="flex items-center gap-2">
+                      <User className="h-3.5 w-3.5 text-slate-600 shrink-0" />
+                      <span><strong>Driver:</strong> {selectedBus.driver?.name || <span className="text-slate-600 italic">Unassigned</span>}</span>
                     </div>
 
                     {selectedBus.driver?.phone && (
-                      <div className="flex items-center gap-2 text-slate-700">
-                        <Phone className="h-4 w-4 text-slate-400 shrink-0" />
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-3.5 w-3.5 text-slate-600 shrink-0" />
                         <span><strong>Phone:</strong> {selectedBus.driver.phone}</span>
                       </div>
                     )}
 
-                    <div className="flex items-center gap-2 text-slate-700">
-                      <Route className="h-4 w-4 text-slate-400 shrink-0" />
-                      <span><strong>Route:</strong> {selectedBus.assignedRoute?.name || 'Unassigned'}</span>
+                    <div className="flex items-center gap-2">
+                      <Route className="h-3.5 w-3.5 text-slate-600 shrink-0" />
+                      <span><strong>Route:</strong> {selectedBus.assignedRoute?.name || <span className="text-slate-600 italic">Unassigned</span>}</span>
                     </div>
                   </div>
 
                   {/* Route Stops Sequence */}
                   {routeStops.length > 0 && (
-                    <div className="pt-3 border-t border-slate-100">
-                      <p className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Route Stop Sequence:</p>
-                      <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    <div className="pt-2.5 border-t border-slate-200 space-y-2">
+                      <p className="font-bold text-slate-800 uppercase tracking-wider text-[10px]">Route Stop Sequence:</p>
+                      <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
                         {routeStops.map((s, idx) => (
-                          <div key={s.id} className="flex items-center justify-between rounded-lg bg-slate-50 p-2.5 text-xs border border-slate-100">
-                            <div className="flex items-center gap-2">
-                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 font-bold text-white text-[10px] shadow-sm">
+                          <div key={s.id} className="flex items-center justify-between rounded-md bg-slate-50 p-2 border border-slate-200">
+                            <div className="flex items-center gap-1.5">
+                              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-900 font-bold text-white text-[9px]">
                                 {idx + 1}
                               </span>
-                              <span className="font-semibold text-slate-800">{s.name}</span>
+                              <span className="font-semibold text-slate-900">{s.name}</span>
                             </div>
-                            <span className="text-[10px] text-slate-500 font-mono font-medium">{s.estimatedTime || '-'}</span>
+                            <span className="text-[10px] text-slate-700 font-mono font-medium">{s.estimatedTime || '-'}</span>
                           </div>
                         ))}
                       </div>

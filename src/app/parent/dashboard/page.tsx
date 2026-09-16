@@ -3,12 +3,14 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import { Bus, Parent, Student, TrackingStatus } from '@/lib/types';
+import { Bus, BusStatus, Parent, Student, TrackingStatus } from '@/lib/types';
 import Header from '@/components/layout/Header';
 import LiveMap from '@/components/tracking/LiveMap';
 import EmptyState from '@/components/shared/empty-state';
 import { Navigation, Phone, User, MapPin, Clock, ShieldCheck, RefreshCw, Radio } from 'lucide-react';
 import { toast } from 'sonner';
+
+import { subscribeToBusLocation } from '@/lib/firebase';
 
 export default function ParentDashboard() {
   const { user } = useAuth();
@@ -44,6 +46,39 @@ export default function ParentDashboard() {
     const interval = setInterval(fetchParentInfo, 5000);
     return () => clearInterval(interval);
   }, [user, selectedChild?.id]);
+
+  // Realtime Firebase subscription for the child's bus
+  useEffect(() => {
+    const busId = busDetails?.id || selectedChild?.assignedBus?.id;
+    if (!busId) return;
+
+    const unsub = subscribeToBusLocation(busId, (liveLoc) => {
+      if (!liveLoc) return;
+      setBusDetails((prevBus) => {
+        if (!prevBus) return prevBus;
+        return {
+          ...prevBus,
+          tracking: {
+            busId,
+            latitude: liveLoc.latitude,
+            longitude: liveLoc.longitude,
+            speed: liveLoc.speed || 0,
+            heading: liveLoc.heading || 0,
+            lastUpdated: liveLoc.lastUpdated || Date.now(),
+            status: (liveLoc.status as BusStatus) || BusStatus.MOVING,
+            trackingStatus:
+              liveLoc.status === BusStatus.MOVING || liveLoc.status === TrackingStatus.LIVE
+                ? TrackingStatus.LIVE
+                : liveLoc.status === TrackingStatus.STALE
+                ? TrackingStatus.STALE
+                : TrackingStatus.OFFLINE,
+          },
+        };
+      });
+    });
+
+    return () => unsub();
+  }, [busDetails?.id, selectedChild?.assignedBus?.id]);
 
   const handleSelectChild = async (child: any) => {
     setSelectedChild(child);

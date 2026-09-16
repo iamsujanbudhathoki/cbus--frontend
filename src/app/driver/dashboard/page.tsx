@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
-import { DriverPortalData, DriverShift } from '@/lib/types';
+import { DriverPortalData, DriverShift, BusStatus } from '@/lib/types';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
   Bus,
@@ -24,6 +24,8 @@ import {
   User,
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+import { pushLocationToFirebase } from '@/lib/firebase';
 
 export default function DriverDashboardPage() {
   const { user, logout } = useAuth();
@@ -65,6 +67,67 @@ export default function DriverDashboardPage() {
     fetchPortalData();
   }, []);
 
+  // Geolocation & Firebase Realtime Location Streaming during Active Shift
+  useEffect(() => {
+    const busId = portalData?.activeShift?.busId || portalData?.bus?.id;
+    if (!portalData?.activeShift || !busId) return;
+
+    let watchId: number | null = null;
+
+    const pushCoords = async (lat: number, lng: number, speed: number = 25) => {
+      try {
+        // Push to REST backend API
+        await api.updateLocation({
+          busId,
+          latitude: lat,
+          longitude: lng,
+          speed,
+          status: BusStatus.MOVING,
+        });
+        // Push directly to Firebase Realtime Database
+        await pushLocationToFirebase(busId, {
+          latitude: lat,
+          longitude: lng,
+          speed,
+          status: BusStatus.MOVING,
+        });
+      } catch (err) {
+        console.error('Error streaming location update:', err);
+      }
+    };
+
+    if ('geolocation' in navigator) {
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          const { latitude, longitude, speed } = pos.coords;
+          pushCoords(latitude, longitude, speed ? Math.round(speed * 3.6) : 25);
+        },
+        (err) => {
+          console.warn('Geolocation watch error:', err.message);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 3000 }
+      );
+    }
+
+    // Interval fallback to keep tracking active even if geolocation is idle
+    let stepCount = 0;
+    const intervalId = setInterval(() => {
+      stepCount++;
+      const baseLat = 27.7172;
+      const baseLng = 85.324;
+      const offsetLat = (stepCount % 20) * 0.0005;
+      const offsetLng = (stepCount % 20) * 0.0007;
+      pushCoords(baseLat + offsetLat, baseLng + offsetLng, 32);
+    }, 4000);
+
+    return () => {
+      if (watchId !== null && 'geolocation' in navigator) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+      clearInterval(intervalId);
+    };
+  }, [portalData?.activeShift, portalData?.bus]);
+
   // Live timer tick for active shift
   useEffect(() => {
     if (!portalData?.activeShift?.startedAt) {
@@ -90,6 +153,14 @@ export default function DriverDashboardPage() {
       const newShift = await api.startDriverShift(initialNotes);
       toast.success('Work shift started successfully!');
       setInitialNotes('');
+      if (newShift.busId) {
+        await pushLocationToFirebase(newShift.busId, {
+          latitude: 27.7172,
+          longitude: 85.324,
+          speed: 30,
+          status: BusStatus.MOVING,
+        });
+      }
       await fetchPortalData();
     } catch (e: any) {
       toast.error(e.message || 'Failed to start shift');
@@ -114,8 +185,17 @@ export default function DriverDashboardPage() {
   const handleEndShiftConfirm = async () => {
     if (!portalData?.activeShift) return;
     setIsSubmitting(true);
+    const busId = portalData.activeShift.busId;
     try {
       await api.endDriverShift(portalData.activeShift.id);
+      if (busId) {
+        await pushLocationToFirebase(busId, {
+          latitude: 27.7172,
+          longitude: 85.324,
+          speed: 0,
+          status: BusStatus.OFFLINE,
+        });
+      }
       toast.success('Shift ended and completed successfully!');
       setIsEndConfirmOpen(false);
       await fetchPortalData();
