@@ -17,6 +17,12 @@ async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise
     headers,
   });
 
+  if (response.status === 401) {
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+      window.location.href = '/login';
+    }
+  }
+
   const json = await response.json();
 
   if (!response.ok || json.success === false) {
