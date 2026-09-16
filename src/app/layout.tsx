@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
+import { SidebarProvider } from "@/lib/sidebar-context";
 import BProgressProvider from "@/components/providers/progress-provider";
 import { Toaster } from "sonner";
 
@@ -26,7 +27,9 @@ export default function RootLayout({
     <html lang="en" className="h-full antialiased" suppressHydrationWarning>
       <body className={`${inter.className} min-h-full flex flex-col bg-slate-50 text-slate-900`} suppressHydrationWarning>
         <BProgressProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <SidebarProvider>{children}</SidebarProvider>
+          </AuthProvider>
         </BProgressProvider>
         <Toaster position="top-right" richColors closeButton />
       </body>

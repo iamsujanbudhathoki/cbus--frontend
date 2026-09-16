@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { useSidebar } from '@/lib/sidebar-context';
 import { Role } from '@/lib/types';
 import {
   LayoutDashboard,
@@ -14,10 +15,13 @@ import {
   Route,
   Navigation,
   UserCheck,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 
 export default function Sidebar() {
   const { user } = useAuth();
+  const { isCollapsed, toggleSidebar } = useSidebar();
   const pathname = usePathname();
 
   if (!user) return null;
@@ -46,9 +50,32 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="hidden md:block w-56 border-r border-slate-200 bg-white p-3 shrink-0">
-      
-      <nav className="space-y-1">
+    <aside
+      className={`hidden md:flex flex-col border-r border-slate-200 bg-white p-2 shrink-0 transition-all duration-300 ease-in-out ${
+        isCollapsed ? 'w-16' : 'w-56'
+      }`}
+    >
+      <div className={`flex items-center justify-between px-2 py-1.5 mb-2 border-b border-slate-100 pb-2 ${isCollapsed ? 'justify-center' : ''}`}>
+        {!isCollapsed && (
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            Navigation
+          </span>
+        )}
+        <button
+          onClick={toggleSidebar}
+          className="flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 hover:text-slate-800 cursor-pointer transition-colors"
+          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {isCollapsed ? (
+            <PanelLeftOpen className="h-4 w-4 shrink-0" />
+          ) : (
+            <PanelLeftClose className="h-4 w-4 shrink-0" />
+          )}
+        </button>
+      </div>
+
+      <nav className="space-y-1 flex-1">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname.startsWith(item.href);
@@ -57,14 +84,21 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-2.5 rounded-md px-3 py-2 text-xs transition-colors cursor-pointer ${
+              title={isCollapsed ? item.label : undefined}
+              className={`flex items-center gap-2.5 rounded-md text-xs transition-all cursor-pointer group ${
+                isCollapsed ? 'justify-center p-2.5' : 'px-3 py-2'
+              } ${
                 isActive
                   ? 'bg-blue-50 text-blue-900 font-bold border-l-2 border-blue-600'
                   : 'text-slate-800 font-medium hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
-              <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-blue-600' : 'text-slate-600'}`} />
-              <span>{item.label}</span>
+              <Icon
+                className={`h-4 w-4 shrink-0 transition-transform duration-150 group-hover:scale-110 ${
+                  isActive ? 'text-blue-600' : 'text-slate-600'
+                }`}
+              />
+              {!isCollapsed && <span className="truncate">{item.label}</span>}
             </Link>
           );
         })}
