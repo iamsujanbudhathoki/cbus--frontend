@@ -1,15 +1,17 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getDatabase, ref, onValue, set, off } from 'firebase/database';
+import { envConfig } from '../config/env.config';
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyD4QwxgZpq7GistR4Exx3NXS2Wf1rhi38k",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "bustrakingnepal.firebaseapp.com",
-  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL || "https://bustrakingnepal-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "bustrakingnepal",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "bustrakingnepal.firebasestorage.app",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "239724786973",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:239724786973:web:9f761da15079ef0aa61df4",
+  apiKey: envConfig.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: envConfig.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  databaseURL: envConfig.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
+  projectId: envConfig.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: envConfig.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: envConfig.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: envConfig.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
+
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 export const db = getDatabase(app);

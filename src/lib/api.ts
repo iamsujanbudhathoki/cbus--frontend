@@ -1,6 +1,8 @@
 import { Bus, College, Driver, DriverPortalData, DriverShift, Parent, Route, RouteStop, Student, User } from './types';
+import { envConfig } from '../config/env.config';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+const API_BASE_URL = envConfig.NEXT_PUBLIC_API_URL;
+
 
 
 async function fetchAPI<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
