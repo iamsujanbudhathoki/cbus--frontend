@@ -22,6 +22,8 @@ import {
 import { GraduationCap, Bus as BusIcon, Route, Navigation, Radio, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
+import { subscribeToFleet } from '@/lib/socket';
+
 export default function CollegeAdminDashboard() {
   const { user } = useAuth();
   const [metrics, setMetrics] = useState<any>(null);
@@ -41,7 +43,74 @@ export default function CollegeAdminDashboard() {
       })
       .catch((e) => console.error(e))
       .finally(() => setIsLoading(false));
-  }, [user]);
+
+    const unsub = subscribeToFleet(
+      user.collegeId,
+      (liveLoc) => {
+        setBuses((prevBuses) =>
+          prevBuses.map((b) => {
+            if (b.id !== liveLoc.busId) return b;
+            const isMoving = liveLoc.status === BusStatus.MOVING || liveLoc.status === 'MOVING';
+            return {
+              ...b,
+              status: (liveLoc.status as BusStatus) || b.status,
+              tracking: {
+                busId: b.id,
+                latitude: liveLoc.latitude,
+                longitude: liveLoc.longitude,
+                speed: liveLoc.speed || 0,
+                heading: liveLoc.heading || 0,
+                lastUpdated: liveLoc.lastUpdated || Date.now(),
+                status: (liveLoc.status as BusStatus) || (isMoving ? BusStatus.MOVING : BusStatus.IDLE),
+                trackingStatus:
+                  isMoving || liveLoc.trackingStatus === TrackingStatus.LIVE || liveLoc.status === TrackingStatus.LIVE
+                    ? TrackingStatus.LIVE
+                    : liveLoc.status === TrackingStatus.STALE || liveLoc.trackingStatus === TrackingStatus.STALE
+                    ? TrackingStatus.STALE
+                    : TrackingStatus.OFFLINE,
+              },
+            };
+          })
+        );
+      },
+      (statusData) => {
+        setBuses((prevBuses) =>
+          prevBuses.map((b) => {
+            if (b.id !== statusData.busId) return b;
+            const newStatus = statusData.status as BusStatus;
+            return {
+              ...b,
+              status: newStatus,
+              tracking: b.tracking
+                ? {
+                    ...b.tracking,
+                    status: newStatus,
+                    trackingStatus: newStatus === BusStatus.MOVING ? TrackingStatus.LIVE : TrackingStatus.OFFLINE,
+                  }
+                : null,
+            };
+          })
+        );
+      }
+    );
+
+    return () => unsub();
+  }, [user?.collegeId]);
+
+  const movingBusesCount = isLoading
+    ? '-'
+    : buses.filter(
+        (b) =>
+          b.status === BusStatus.MOVING ||
+          b.tracking?.status === BusStatus.MOVING ||
+          b.tracking?.trackingStatus === TrackingStatus.LIVE
+      ).length;
+
+  const totalBusesCount = isLoading
+    ? '-'
+    : buses.length > 0
+    ? buses.length
+    : (metrics?.totalBuses ?? 0);
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
@@ -66,22 +135,22 @@ export default function CollegeAdminDashboard() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatWidget
               title="Registered Students"
-              value={metrics?.totalStudents ?? '-'}
+              value={isLoading ? '-' : (metrics?.totalStudents ?? '-')}
               icon={GraduationCap}
             />
             <StatWidget
               title="Total Buses"
-              value={metrics?.totalBuses ?? '-'}
+              value={totalBusesCount}
               icon={BusIcon}
             />
             <StatWidget
               title="Moving Buses"
-              value={metrics?.activeBuses ?? '-'}
+              value={movingBusesCount}
               icon={Navigation}
             />
             <StatWidget
               title="Bus Routes"
-              value={metrics?.totalRoutes ?? '-'}
+              value={isLoading ? '-' : (metrics?.totalRoutes ?? '-')}
               icon={Route}
             />
           </div>

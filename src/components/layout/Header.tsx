@@ -24,6 +24,13 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { Bell, BellOff } from 'lucide-react';
+import {
+  getNotificationPermission,
+  requestNotificationPermission,
+  sendBrowserNotification,
+} from '@/lib/notifications';
+import { toast } from 'sonner';
 
 export default function Header() {
   const { user, logout } = useAuth();
@@ -31,9 +38,11 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>('default');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    setNotifPermission(getNotificationPermission());
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsProfileDropdownOpen(false);
@@ -44,6 +53,33 @@ export default function Header() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  const handleToggleNotifications = async () => {
+    const current = getNotificationPermission();
+    if (current === 'granted') {
+      toast.info('Browser alerts are already active. Sending test notification...');
+      sendBrowserNotification('🔔 Bus Alerts Working!', {
+        body: 'Browser alerts are working properly and will alert you during live trips.',
+      });
+      return;
+    }
+
+    if (current === 'denied') {
+      window.dispatchEvent(new CustomEvent('busapp:open-notif-help'));
+      return;
+    }
+
+    const res = await requestNotificationPermission();
+    setNotifPermission(res);
+    if (res === 'granted') {
+      toast.success('Browser notifications enabled!');
+      sendBrowserNotification('🔔 Bus Tracking Alerts Active', {
+        body: 'You will now receive real-time bus alerts even when this tab is in the background.',
+      });
+    } else if (res === 'denied') {
+      window.dispatchEvent(new CustomEvent('busapp:open-notif-help'));
+    }
+  };
 
   if (!user) return null;
 
@@ -114,8 +150,35 @@ export default function Header() {
           </Link>
         </div>
 
-        {/* Right Side User Profile Dropdown Menu */}
-        <div className="relative" ref={dropdownRef}>
+        {/* Right Side Header Controls */}
+        <div className="flex items-center gap-2">
+          {/* Browser Notification Bell Toggle */}
+          <button
+            type="button"
+            onClick={handleToggleNotifications}
+            className="relative flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+            title={
+              notifPermission === 'granted'
+                ? 'Browser notifications are active'
+                : 'Click to enable live browser notifications'
+            }
+            aria-label="Toggle live notifications"
+          >
+            {notifPermission === 'granted' ? (
+              <>
+                <Bell className="h-4 w-4 text-blue-600" />
+                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white" />
+              </>
+            ) : (
+              <>
+                <BellOff className="h-4 w-4 text-slate-400" />
+                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-white animate-pulse" />
+              </>
+            )}
+          </button>
+
+          {/* User Profile Dropdown Menu */}
+          <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
             className="flex items-center gap-2 rounded-md border border-slate-300 bg-white p-1.5 pr-2.5 hover:bg-slate-50 transition-colors cursor-pointer text-xs"
@@ -195,7 +258,8 @@ export default function Header() {
             </div>
           )}
         </div>
-      </header>
+      </div>
+    </header>
 
       {/* Mobile Drawer Backdrop & Menu */}
       {mobileMenuOpen && (

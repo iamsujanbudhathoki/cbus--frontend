@@ -33,10 +33,7 @@ export function RouteFormDialog({
 }: RouteFormDialogProps) {
   let defaultStart = '';
   let defaultEnd = '';
-  let defaultStops: any[] = [
-    { name: 'Start Pickup Point', latitude: 27.6915, longitude: 85.342, estimatedTime: '07:00 AM' },
-    { name: 'Final Destination Stop', latitude: 27.6800, longitude: 85.3100, estimatedTime: '07:45 AM' },
-  ];
+  let defaultStops: any[] = [];
 
   if (editingRoute) {
     if (editingRoute.description && editingRoute.description.includes('From ') && editingRoute.description.includes(' to ')) {
@@ -78,8 +75,8 @@ export function RouteFormDialog({
   const handleAddStopWaypoint = () => {
     append({
       name: '',
-      latitude: 27.6915,
-      longitude: 85.342,
+      latitude: undefined as any,
+      longitude: undefined as any,
       estimatedTime: '',
     });
   };
@@ -235,7 +232,7 @@ export function RouteFormDialog({
                           type="number"
                           step="any"
                           {...register(`stops.${index}.latitude` as const, { valueAsNumber: true })}
-                          placeholder="27.6915"
+                          placeholder="Latitude (e.g. 37.7749)"
                         />
                       </div>
                       <div>
@@ -244,7 +241,7 @@ export function RouteFormDialog({
                           type="number"
                           step="any"
                           {...register(`stops.${index}.longitude` as const, { valueAsNumber: true })}
-                          placeholder="85.3420"
+                          placeholder="Longitude (e.g. -122.4194)"
                         />
                       </div>
                     </div>

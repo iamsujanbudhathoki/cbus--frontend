@@ -25,7 +25,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { pushLocationToFirebase } from '@/lib/firebase';
+import { emitDriverLocation, getSocket } from '@/lib/socket';
+import { sendBrowserNotification } from '@/lib/notifications';
 
 export default function DriverDashboardPage() {
   const { user, logout } = useAuth();
@@ -42,6 +43,10 @@ export default function DriverDashboardPage() {
 
   // End shift confirmation state
   const [isEndConfirmOpen, setIsEndConfirmOpen] = useState(false);
+
+  // Live GPS status
+  const [gpsStatus, setGpsStatus] = useState<'streaming' | 'acquiring' | 'blocked' | 'idle'>('idle');
+  const [currentGps, setCurrentGps] = useState<{ latitude: number; longitude: number; speed: number } | null>(null);
 
   // Live timer state for active shift
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -67,79 +72,106 @@ export default function DriverDashboardPage() {
     fetchPortalData();
   }, []);
 
-  // Geolocation & Firebase Realtime Location Streaming during Active Shift
+  // Geolocation & WebSocket Realtime Location Streaming during Active Shift
   useEffect(() => {
     const busId = portalData?.activeShift?.busId || portalData?.bus?.id;
-    if (!portalData?.activeShift || !busId) return;
+    if (!portalData?.activeShift || !busId) {
+      setGpsStatus('idle');
+      return;
+    }
 
+    setGpsStatus('acquiring');
     let watchId: number | null = null;
     let lastRealPos: { latitude: number; longitude: number; speed: number } | null = null;
     let lastPushTime = 0;
-    const MIN_PUSH_INTERVAL_MS = 5000; // 5 seconds interval throttle
+    const MIN_PUSH_INTERVAL_MS = 2000; // 2s throttle for smooth real-time tracking
 
-    const pushCoords = async (lat: number, lng: number, speed: number = 25, force: boolean = false) => {
+    const pushCoords = (lat: number, lng: number, speed: number = 0, force: boolean = false) => {
       const now = Date.now();
       if (!force && now - lastPushTime < MIN_PUSH_INTERVAL_MS) {
         return;
       }
       lastPushTime = now;
       try {
-        // Parallel fault-tolerant push to both REST backend API and Firebase Realtime DB
-        await Promise.allSettled([
-          api.updateLocation({
-            busId,
-            latitude: lat,
-            longitude: lng,
-            speed,
-            status: BusStatus.MOVING,
-          }),
-          pushLocationToFirebase(busId, {
-            latitude: lat,
-            longitude: lng,
-            speed,
-            status: BusStatus.MOVING,
-          }),
-        ]);
+        // Pure WebSocket emit directly to backend gateway
+        emitDriverLocation({
+          busId,
+          collegeId: portalData?.activeShift?.collegeId || portalData?.bus?.collegeId,
+          latitude: lat,
+          longitude: lng,
+          speed,
+          status: BusStatus.MOVING,
+        });
       } catch (err) {
-        console.error('Error streaming location update:', err);
+        console.error('[Driver] Error streaming location via WebSocket:', err);
       }
     };
 
+    const handleNewFix = (coords: GeolocationCoordinates) => {
+      const { latitude, longitude, speed } = coords;
+      const currentSpeed = speed ? Math.round(speed * 3.6) : (lastRealPos?.speed || 0);
+      lastRealPos = { latitude, longitude, speed: currentSpeed };
+      setGpsStatus('streaming');
+      setCurrentGps({ latitude, longitude, speed: currentSpeed });
+      pushCoords(latitude, longitude, currentSpeed);
+    };
+
     if ('geolocation' in navigator) {
-      watchId = navigator.geolocation.watchPosition(
-        (pos) => {
-          const { latitude, longitude, speed } = pos.coords;
-          const currentSpeed = speed ? Math.round(speed * 3.6) : 25;
-          lastRealPos = { latitude, longitude, speed: currentSpeed };
-          pushCoords(latitude, longitude, currentSpeed);
-        },
+      // Immediate initial GPS fix so we do not wait on watchPosition
+      navigator.geolocation.getCurrentPosition(
+        (pos) => handleNewFix(pos.coords),
         (err) => {
-          console.warn('Geolocation watch error:', err.message);
+          console.warn('[Driver] Immediate GPS fetch error:', err.message);
+          if (err.code === err.PERMISSION_DENIED) {
+            setGpsStatus('blocked');
+          } else {
+            setGpsStatus('acquiring');
+          }
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 3000 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
+
+      // Continuous GPS tracking for movement
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => handleNewFix(pos.coords),
+        (err) => {
+          console.warn('[Driver] Geolocation watch error:', err.message);
+          if (err.code === err.PERMISSION_DENIED) {
+            setGpsStatus('blocked');
+          } else if (!lastRealPos) {
+            setGpsStatus('acquiring');
+          }
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    } else {
+      setGpsStatus('blocked');
     }
 
-    // Heartbeat interval to keep live tracking active even when stationary
-    let stepCount = 0;
+    // Heartbeat interval: keep live tracking alive while stationary using real coordinates only
     const intervalId = setInterval(() => {
       if (lastRealPos) {
         pushCoords(lastRealPos.latitude, lastRealPos.longitude, lastRealPos.speed, true);
-      } else {
-        stepCount++;
-        const baseLat = 27.7172;
-        const baseLng = 85.324;
-        const offsetLat = (stepCount % 20) * 0.0005;
-        const offsetLng = (stepCount % 20) * 0.0007;
-        pushCoords(baseLat + offsetLat, baseLng + offsetLng, 25, true);
       }
-    }, 5000);
+    }, 4000);
+
+    // Re-emit immediately on socket reconnection so backend cache is never empty
+    const socket = getSocket();
+    const handleReconnect = () => {
+      if (lastRealPos) {
+        console.log('[Driver] Socket reconnected, re-broadcasting last real GPS position');
+        pushCoords(lastRealPos.latitude, lastRealPos.longitude, lastRealPos.speed, true);
+      }
+    };
+    socket.on('connect', handleReconnect);
 
     return () => {
       if (watchId !== null && 'geolocation' in navigator) {
         navigator.geolocation.clearWatch(watchId);
       }
       clearInterval(intervalId);
+      socket.off('connect', handleReconnect);
+      setGpsStatus('idle');
     };
   }, [portalData?.activeShift, portalData?.bus]);
 
@@ -189,26 +221,28 @@ export default function DriverDashboardPage() {
       const pos = await requestLocationPermission();
       const { latitude, longitude, speed } = pos.coords;
 
-      const newShift = await api.startDriverShift(initialNotes);
+      const initialSpeed = speed ? Math.round(speed * 3.6) : 0;
+      const newShift = await api.startDriverShift({
+        notes: initialNotes,
+        latitude,
+        longitude,
+        speed: initialSpeed,
+      });
       toast.success('Work shift started successfully!');
+      sendBrowserNotification('🟢 Work Shift Started', {
+        body: 'Live GPS tracking is now active and streaming to college admin & parents.',
+      });
       setInitialNotes('');
 
       if (newShift.busId) {
-        const initialSpeed = speed ? Math.round(speed * 3.6) : 25;
-        await api.updateLocation({
+        emitDriverLocation({
           busId: newShift.busId,
+          collegeId: newShift.collegeId,
           latitude,
           longitude,
           speed: initialSpeed,
           status: BusStatus.MOVING,
-        }).catch(() => {});
-
-        await pushLocationToFirebase(newShift.busId, {
-          latitude,
-          longitude,
-          speed: initialSpeed,
-          status: BusStatus.MOVING,
-        }).catch(() => {});
+        });
       }
       await fetchPortalData();
     } catch (e: any) {
@@ -243,22 +277,19 @@ export default function DriverDashboardPage() {
       await api.endDriverShift(portalData.activeShift.id);
 
       if (busId) {
-        await api.updateLocation({
+        emitDriverLocation({
           busId,
+          collegeId: portalData.activeShift.collegeId,
           latitude,
           longitude,
           speed: 0,
           status: BusStatus.OFFLINE,
-        }).catch(() => {});
-
-        await pushLocationToFirebase(busId, {
-          latitude,
-          longitude,
-          speed: 0,
-          status: BusStatus.OFFLINE,
-        }).catch(() => {});
+        });
       }
       toast.success('Shift ended and completed successfully!');
+      sendBrowserNotification('🔴 Work Shift Ended', {
+        body: 'Work shift completed successfully. GPS location broadcasting has stopped.',
+      });
       setIsEndConfirmOpen(false);
       await fetchPortalData();
     } catch (e: any) {
@@ -406,6 +437,49 @@ export default function DriverDashboardPage() {
                   <div className="text-3xl font-black font-mono text-emerald-900 mt-1 tracking-tight">
                     {formatDuration(elapsedSeconds)}
                   </div>
+                </div>
+
+                {/* Live GPS Broadcast Status Box */}
+                <div className={`rounded-xl border p-3.5 flex items-center justify-between gap-3 text-xs ${
+                  gpsStatus === 'streaming'
+                    ? 'bg-emerald-50/90 border-emerald-300 text-emerald-900'
+                    : gpsStatus === 'blocked'
+                    ? 'bg-red-50/90 border-red-300 text-red-900'
+                    : 'bg-amber-50/90 border-amber-300 text-amber-900'
+                }`}>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="relative flex h-3 w-3 shrink-0">
+                      {gpsStatus === 'streaming' && (
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      )}
+                      <span className={`relative inline-flex rounded-full h-3 w-3 ${
+                        gpsStatus === 'streaming'
+                          ? 'bg-emerald-500'
+                          : gpsStatus === 'blocked'
+                          ? 'bg-red-500'
+                          : 'bg-amber-500 animate-pulse'
+                      }`} />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-bold truncate">
+                        {gpsStatus === 'streaming'
+                          ? 'GPS Broadcasting via WebSocket'
+                          : gpsStatus === 'blocked'
+                          ? 'GPS Location Access Blocked'
+                          : 'Acquiring GPS Satellite Coordinates...'}
+                      </p>
+                      <p className="text-[11px] opacity-85 font-mono truncate mt-0.5">
+                        {gpsStatus === 'streaming' && currentGps
+                          ? `Lat: ${currentGps.latitude.toFixed(5)}, Lng: ${currentGps.longitude.toFixed(5)} • Speed: ${currentGps.speed} km/h`
+                          : gpsStatus === 'blocked'
+                          ? 'Click the padlock 🔒 in browser address bar to allow Location'
+                          : 'Waiting for device GPS coordinates...'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-white/80 border border-current shrink-0">
+                    {gpsStatus}
+                  </span>
                 </div>
 
                 {/* Assigned Bus & Route Snapshot */}

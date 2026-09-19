@@ -22,7 +22,8 @@ import {
 import { Radio, RefreshCw, Phone, User, Route } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { subscribeToAllBuses } from '@/lib/firebase';
+import { subscribeToFleet } from '@/lib/socket';
+import { sendBrowserNotification } from '@/lib/notifications';
 
 export default function CollegeLiveTrackingPage() {
   const { user } = useAuth();
@@ -35,7 +36,13 @@ export default function CollegeLiveTrackingPage() {
     if (!user?.collegeId) return;
     try {
       const data = await api.getBuses(user.collegeId);
-      setBuses(data);
+      setBuses((prevBuses) => {
+        const prevMap = new Map(prevBuses.map((b) => [b.id, b.tracking]));
+        return data.map((b) => ({
+          ...b,
+          tracking: b.tracking || prevMap.get(b.id) || null,
+        }));
+      });
     } catch (e: any) {
       toast.error('Failed to fetch fleet tracking');
     } finally {
@@ -45,58 +52,72 @@ export default function CollegeLiveTrackingPage() {
 
   useEffect(() => {
     fetchFleetTracking();
-    const interval = setInterval(fetchFleetTracking, 5000); // 5s auto refresh
-    return () => clearInterval(interval);
-  }, [user]);
+  }, [user?.collegeId]);
 
-  // Realtime Firebase Subscription for instant location updates
+  // Realtime WebSocket Subscription for instant college fleet location updates
   useEffect(() => {
-    const unsub = subscribeToAllBuses((busesMap) => {
-      setBuses((prevBuses) =>
-        prevBuses.map((b) => {
-          const liveLoc = busesMap?.[b.id];
-          const isMoving = b.status === BusStatus.MOVING || liveLoc?.status === BusStatus.MOVING;
-          if (!liveLoc) {
-            if (isMoving) {
-              return {
-                ...b,
-                tracking: b.tracking || {
-                  busId: b.id,
-                  latitude: 27.7172,
-                  longitude: 85.324,
-                  speed: 30,
-                  heading: 0,
-                  lastUpdated: Date.now(),
-                  status: BusStatus.MOVING,
-                  trackingStatus: TrackingStatus.LIVE,
-                },
-              };
+    if (!user?.collegeId) return;
+
+    const unsub = subscribeToFleet(
+      user.collegeId,
+      (liveLoc) => {
+        setBuses((prevBuses) =>
+          prevBuses.map((b) => {
+            if (b.id !== liveLoc.busId) return b;
+
+            const isMoving = liveLoc.status === BusStatus.MOVING || liveLoc.status === 'MOVING';
+            if (isMoving && b.status !== BusStatus.MOVING) {
+              sendBrowserNotification(`🚌 Bus #${b.busNumber} Started Moving`, {
+                body: `Bus #${b.busNumber} (${b.vehicleNumber}) is now active. Speed: ${liveLoc.speed || 0} km/h`,
+                tag: `fleet-bus-${b.id}`,
+              });
             }
-            return b;
-          }
-          return {
-            ...b,
-            tracking: {
-              busId: b.id,
-              latitude: liveLoc.latitude,
-              longitude: liveLoc.longitude,
-              speed: liveLoc.speed || 0,
-              heading: liveLoc.heading || 0,
-              lastUpdated: liveLoc.lastUpdated || Date.now(),
-              status: (liveLoc.status as BusStatus) || (isMoving ? BusStatus.MOVING : BusStatus.IDLE),
-              trackingStatus:
-                isMoving || liveLoc.status === BusStatus.MOVING || liveLoc.status === TrackingStatus.LIVE
-                  ? TrackingStatus.LIVE
-                  : liveLoc.status === TrackingStatus.STALE
-                  ? TrackingStatus.STALE
-                  : TrackingStatus.OFFLINE,
-            },
-          };
-        })
-      );
-    });
+            return {
+              ...b,
+              status: (liveLoc.status as BusStatus) || b.status,
+              tracking: {
+                busId: b.id,
+                latitude: liveLoc.latitude,
+                longitude: liveLoc.longitude,
+                speed: liveLoc.speed || 0,
+                heading: liveLoc.heading || 0,
+                lastUpdated: liveLoc.lastUpdated || Date.now(),
+                status: (liveLoc.status as BusStatus) || (isMoving ? BusStatus.MOVING : BusStatus.IDLE),
+                trackingStatus:
+                  isMoving || liveLoc.trackingStatus === TrackingStatus.LIVE || liveLoc.status === TrackingStatus.LIVE
+                    ? TrackingStatus.LIVE
+                    : liveLoc.status === TrackingStatus.STALE || liveLoc.trackingStatus === TrackingStatus.STALE
+                    ? TrackingStatus.STALE
+                    : TrackingStatus.OFFLINE,
+              },
+            };
+          })
+        );
+      },
+      (statusData) => {
+        setBuses((prevBuses) =>
+          prevBuses.map((b) => {
+            if (b.id !== statusData.busId) return b;
+            const newStatus = statusData.status as BusStatus;
+            return {
+              ...b,
+              status: newStatus,
+              tracking: b.tracking
+                ? {
+                    ...b.tracking,
+                    status: newStatus,
+                    trackingStatus: newStatus === BusStatus.MOVING ? TrackingStatus.LIVE : TrackingStatus.OFFLINE,
+                    speed: newStatus === BusStatus.OFFLINE ? 0 : b.tracking.speed,
+                  }
+                : null,
+            };
+          })
+        );
+      }
+    );
+
     return () => unsub();
-  }, []);
+  }, [user?.collegeId]);
 
   const selectedBus = buses.find((b) => b.id === selectedBusId) || null;
   const routeStops = selectedBus?.assignedRoute?.stops || [];
@@ -229,17 +250,40 @@ export default function CollegeLiveTrackingPage() {
                       <Route className="h-3.5 w-3.5 text-slate-600 shrink-0" />
                       <span><strong>Route:</strong> {selectedBus.assignedRoute?.name || <span className="text-slate-600 italic">Unassigned</span>}</span>
                     </div>
+
+                    <div className="flex items-start gap-2">
+                      <Radio className="h-3.5 w-3.5 text-blue-600 shrink-0 mt-0.5" />
+                      <div>
+                        <strong>Live GPS:</strong>{' '}
+                        {selectedBus.tracking?.latitude && selectedBus.tracking?.longitude ? (
+                          <span className="font-mono text-emerald-700 font-bold block xs:inline">
+                            {selectedBus.tracking.latitude.toFixed(5)}, {selectedBus.tracking.longitude.toFixed(5)}
+                          </span>
+                        ) : selectedBus.status === BusStatus.MOVING ? (
+                          <span className="text-amber-600 font-medium animate-pulse">Awaiting GPS telemetry packet...</span>
+                        ) : (
+                          <span className="text-slate-400 italic">No GPS signal (Vehicle Idle/Offline)</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Route Stops Sequence */}
                   {routeStops.length > 0 && (
                     <div className="pt-2.5 border-t border-slate-200 space-y-2">
-                      <p className="font-bold text-slate-800 uppercase tracking-wider text-[10px]">Route Stop Sequence:</p>
+                      <div className="flex items-center justify-between">
+                        <p className="font-bold text-slate-800 uppercase tracking-wider text-[10px]">
+                          Route Waypoint Sequence:
+                        </p>
+                        <span className="text-[10px] text-slate-400 font-normal">
+                          {routeStops.length} stops
+                        </span>
+                      </div>
                       <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
                         {routeStops.map((s, idx) => (
                           <div key={s.id} className="flex items-center justify-between rounded-md bg-slate-50 p-2 border border-slate-200">
                             <div className="flex items-center gap-1.5">
-                              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-slate-900 font-bold text-white text-[9px]">
+                              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 font-bold text-white text-[9px]">
                                 {idx + 1}
                               </span>
                               <span className="font-semibold text-slate-900">{s.name}</span>

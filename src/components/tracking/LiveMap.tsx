@@ -40,8 +40,33 @@ export default function LiveMap({
     });
 
     if (!leafletInstance.current) {
-      // Default center: Kathmandu (27.6915, 85.3206)
-      const map = L.map(mapRef.current).setView([27.6915, 85.3206], 13);
+      // Priority 1: Selected bus live GPS
+      let initialCenter: [number, number] | null = null;
+      if (selectedBusId) {
+        const sel = buses.find((b) => b.id === selectedBusId);
+        if (typeof sel?.tracking?.latitude === 'number' && typeof sel?.tracking?.longitude === 'number') {
+          initialCenter = [sel.tracking.latitude, sel.tracking.longitude];
+        }
+      }
+      // Priority 2: Any bus in fleet with active live GPS
+      if (!initialCenter) {
+        const liveBus = buses.find((b) => typeof b.tracking?.latitude === 'number' && typeof b.tracking?.longitude === 'number');
+        if (liveBus?.tracking) {
+          initialCenter = [liveBus.tracking.latitude, liveBus.tracking.longitude];
+        }
+      }
+      // Priority 3: First route stop if route configured
+      if (!initialCenter && routeStops && routeStops.length > 0 && typeof routeStops[0].latitude === 'number') {
+        initialCenter = [routeStops[0].latitude, routeStops[0].longitude];
+      }
+      // Priority 4: Neutral global view when no coordinates exist
+      let initialZoom = 13;
+      if (!initialCenter) {
+        initialCenter = [20.0, 0.0];
+        initialZoom = 2;
+      }
+
+      const map = L.map(mapRef.current).setView(initialCenter, initialZoom);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors',
@@ -83,8 +108,9 @@ export default function LiveMap({
         const stopMarker = L.marker([stop.latitude, stop.longitude], { icon: stopIcon }).addTo(map);
         stopMarker.bindPopup(`
           <div style="font-family: sans-serif; padding: 4px;">
-            <h4 style="margin: 0 0 4px 0; font-weight: 700;">Stop ${stop.sequence}: ${stop.name}</h4>
-            <p style="margin: 0; font-size: 12px; color: #4b5563;">Est. Time: ${stop.estimatedTime || 'N/A'}</p>
+            <span style="color: #2563eb; font-weight: bold; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Route Stop ${stop.sequence}</span>
+            <h4 style="margin: 2px 0 4px 0; font-weight: 700; font-size: 13px;">${stop.name}</h4>
+            <p style="margin: 0; font-size: 11px; color: #6b7280;">Scheduled Waypoint &bull; Est. ${stop.estimatedTime || 'N/A'}</p>
           </div>
         `);
         routeMarkersRef.current[`stop_${stop.id}`] = stopMarker;
@@ -105,8 +131,18 @@ export default function LiveMap({
     const bounds: any[] = [];
 
     buses.forEach((bus) => {
-      const lat = bus.tracking?.latitude || 27.6915;
-      const lng = bus.tracking?.longitude || 85.3206;
+      const lat = bus.tracking?.latitude;
+      const lng = bus.tracking?.longitude;
+
+      // Do NOT place markers for buses that have no verified real GPS location!
+      if (typeof lat !== 'number' || typeof lng !== 'number') {
+        if (markersRef.current[bus.id]) {
+          map.removeLayer(markersRef.current[bus.id]);
+          delete markersRef.current[bus.id];
+        }
+        return;
+      }
+
       bounds.push([lat, lng]);
 
       const isMovingBus = bus.status === BusStatus.MOVING || bus.tracking?.status === BusStatus.MOVING;
@@ -184,23 +220,49 @@ export default function LiveMap({
       }
     });
 
-    // 3. Camera bounds logic: Only auto-fit bounds on initial load or when a specific bus is selected
+    // 3. Camera bounds logic: Follow live bus GPS coordinates, NEVER fall back to route stops as bus position
     if (selectedBusId) {
       const selectedBus = buses.find((b) => b.id === selectedBusId);
-      if (selectedBus && selectedBus.tracking) {
-        map.panTo([selectedBus.tracking.latitude, selectedBus.tracking.longitude]);
+      if (
+        selectedBus &&
+        typeof selectedBus.tracking?.latitude === 'number' &&
+        typeof selectedBus.tracking?.longitude === 'number'
+      ) {
+        // Actively follow live driver coordinates
+        map.panTo([selectedBus.tracking.latitude, selectedBus.tracking.longitude], { animate: true, duration: 0.5 });
+      } else if (!hasInitialFit.current && routeStops && routeStops.length > 0) {
+        // View entire route on first load while awaiting vehicle GPS
+        const stopBounds = routeStops.map((s) => [s.latitude, s.longitude]);
+        map.fitBounds(stopBounds, { padding: [50, 50], maxZoom: 14 });
+        hasInitialFit.current = true;
       }
     } else if (!hasInitialFit.current && bounds.length > 0) {
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
       hasInitialFit.current = true;
+    } else if (!hasInitialFit.current && routeStops.length > 0) {
+      const stopBounds = routeStops.map((s) => [s.latitude, s.longitude]);
+      map.fitBounds(stopBounds, { padding: [50, 50], maxZoom: 14 });
+      hasInitialFit.current = true;
     }
   }, [buses, routeStops, selectedBusId]);
 
+  const hasAnyCoordinates =
+    buses.some((b) => typeof b.tracking?.latitude === 'number' && typeof b.tracking?.longitude === 'number') ||
+    (routeStops && routeStops.length > 0 && typeof routeStops[0].latitude === 'number');
+
   return (
-    <div
-      ref={mapRef}
-      className="relative z-0 isolate"
-      style={{ height, width: '100%', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-    />
+    <div className="relative w-full" style={{ height }}>
+      <div
+        ref={mapRef}
+        className="relative z-0 isolate h-full w-full"
+        style={{ borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+      />
+      {!hasAnyCoordinates && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-slate-900/85 backdrop-blur-md text-white px-4 py-2 rounded-full text-xs font-semibold shadow-lg flex items-center gap-2 border border-slate-700 pointer-events-none">
+          <span className="h-2 w-2 rounded-full bg-amber-400 animate-ping" />
+          <span>Awaiting live vehicle GPS telemetry or configured route stops</span>
+        </div>
+      )}
+    </div>
   );
 }

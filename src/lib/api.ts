@@ -96,7 +96,11 @@ export const api = {
 
   // Driver Shifts
   getDriverPortal: () => fetchAPI<DriverPortalData>('/driver-shifts/portal'),
-  startDriverShift: (notes?: string) => fetchAPI<DriverShift>('/driver-shifts/start', { method: 'POST', body: JSON.stringify({ notes }) }),
+  startDriverShift: (data?: { notes?: string; latitude?: number; longitude?: number; speed?: number } | string) =>
+    fetchAPI<DriverShift>('/driver-shifts/start', {
+      method: 'POST',
+      body: JSON.stringify(typeof data === 'string' ? { notes: data } : data || {}),
+    }),
   updateShiftNotes: (id: string, notes: string) => fetchAPI<DriverShift>(`/driver-shifts/${id}/notes`, { method: 'PUT', body: JSON.stringify({ notes }) }),
   endDriverShift: (id: string) => fetchAPI<DriverShift>(`/driver-shifts/${id}/end`, { method: 'POST' }),
   getDriverShiftHistory: (range?: string) => fetchAPI<DriverShift[]>(`/driver-shifts/history${range ? `?range=${range}` : ''}`),

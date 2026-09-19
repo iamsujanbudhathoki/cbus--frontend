@@ -146,7 +146,7 @@ export interface Bus {
   status: BusStatus;
   isActive: boolean;
   assignedRoute?: Route;
-  tracking?: TrackingData;
+  tracking?: TrackingData | null;
   college?: College;
 }
 

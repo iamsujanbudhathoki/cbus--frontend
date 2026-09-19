@@ -5,6 +5,7 @@ import { AuthProvider } from "@/lib/auth-context";
 import { SidebarProvider } from "@/lib/sidebar-context";
 import BProgressProvider from "@/components/providers/progress-provider";
 import { Toaster } from "sonner";
+import NotificationManager from "@/components/notifications/NotificationManager";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -28,6 +29,7 @@ export default function RootLayout({
       <body className={`${inter.className} min-h-full flex flex-col bg-slate-50 text-slate-900`} suppressHydrationWarning>
         <BProgressProvider>
           <AuthProvider>
+            <NotificationManager />
             <SidebarProvider>{children}</SidebarProvider>
           </AuthProvider>
         </BProgressProvider>

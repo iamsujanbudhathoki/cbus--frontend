@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { Bus, BusStatus, Parent, Student, TrackingStatus } from '@/lib/types';
@@ -9,8 +9,8 @@ import LiveMap from '@/components/tracking/LiveMap';
 import EmptyState from '@/components/shared/empty-state';
 import { Navigation, Phone, User, MapPin, Clock, ShieldCheck, RefreshCw, Radio } from 'lucide-react';
 import { toast } from 'sonner';
-
-import { subscribeToBusLocation } from '@/lib/firebase';
+import { subscribeToBusLocation } from '@/lib/socket';
+import { sendBrowserNotification } from '@/lib/notifications';
 
 export default function ParentDashboard() {
   const { user } = useAuth();
@@ -18,6 +18,7 @@ export default function ParentDashboard() {
   const [selectedChild, setSelectedChild] = useState<any>(null);
   const [busDetails, setBusDetails] = useState<Bus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const prevStatusRef = useRef<string | null>(null);
 
   const fetchParentInfo = async () => {
     if (!user?.id) return;
@@ -47,35 +48,69 @@ export default function ParentDashboard() {
     return () => clearInterval(interval);
   }, [user, selectedChild?.id]);
 
-  // Realtime Firebase subscription for the child's bus
+  // Realtime WebSocket subscription for the child's bus
   useEffect(() => {
     const busId = busDetails?.id || selectedChild?.assignedBus?.id;
     if (!busId) return;
 
-    const unsub = subscribeToBusLocation(busId, (liveLoc) => {
-      if (!liveLoc) return;
-      setBusDetails((prevBus) => {
-        if (!prevBus) return prevBus;
-        return {
-          ...prevBus,
-          tracking: {
-            busId,
-            latitude: liveLoc.latitude,
-            longitude: liveLoc.longitude,
-            speed: liveLoc.speed || 0,
-            heading: liveLoc.heading || 0,
-            lastUpdated: liveLoc.lastUpdated || Date.now(),
-            status: (liveLoc.status as BusStatus) || BusStatus.MOVING,
-            trackingStatus:
-              liveLoc.status === BusStatus.MOVING || liveLoc.status === TrackingStatus.LIVE
-                ? TrackingStatus.LIVE
-                : liveLoc.status === TrackingStatus.STALE
-                ? TrackingStatus.STALE
-                : TrackingStatus.OFFLINE,
-          },
-        };
-      });
-    });
+    const unsub = subscribeToBusLocation(
+      busId,
+      (liveLoc) => {
+        if (!liveLoc) return;
+
+        // Notify parent when bus transitions to MOVING
+        const isNowMoving = liveLoc.status === BusStatus.MOVING || (liveLoc.speed && liveLoc.speed > 5);
+        const wasMoving = prevStatusRef.current === BusStatus.MOVING;
+        if (isNowMoving && !wasMoving) {
+          sendBrowserNotification(`🚌 Bus #${busDetails?.busNumber || ''} is on the move!`, {
+            body: `Live tracking is active. Current speed: ${liveLoc.speed || 0} km/h.`,
+            tag: `bus-${busId}-moving`,
+          });
+        }
+        prevStatusRef.current = liveLoc.status;
+
+        setBusDetails((prevBus) => {
+          if (!prevBus) return prevBus;
+          return {
+            ...prevBus,
+            status: (liveLoc.status as BusStatus) || prevBus.status,
+            tracking: {
+              busId,
+              latitude: liveLoc.latitude,
+              longitude: liveLoc.longitude,
+              speed: liveLoc.speed || 0,
+              heading: liveLoc.heading || 0,
+              lastUpdated: liveLoc.lastUpdated || Date.now(),
+              status: (liveLoc.status as BusStatus) || BusStatus.MOVING,
+              trackingStatus:
+                liveLoc.status === BusStatus.MOVING || liveLoc.status === TrackingStatus.LIVE
+                  ? TrackingStatus.LIVE
+                  : liveLoc.status === TrackingStatus.STALE
+                  ? TrackingStatus.STALE
+                  : TrackingStatus.OFFLINE,
+            },
+          };
+        });
+      },
+      (statusData) => {
+        setBusDetails((prevBus) => {
+          if (!prevBus) return prevBus;
+          const newStatus = statusData.status as BusStatus;
+          return {
+            ...prevBus,
+            status: newStatus,
+            tracking: prevBus.tracking
+              ? {
+                  ...prevBus.tracking,
+                  status: newStatus,
+                  trackingStatus: newStatus === BusStatus.MOVING ? TrackingStatus.LIVE : TrackingStatus.OFFLINE,
+                  speed: newStatus === BusStatus.OFFLINE ? 0 : prevBus.tracking.speed,
+                }
+              : null,
+          };
+        });
+      }
+    );
 
     return () => unsub();
   }, [busDetails?.id, selectedChild?.assignedBus?.id]);
