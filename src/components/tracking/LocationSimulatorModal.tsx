@@ -1,7 +1,17 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Bus, BusStatus } from '@/lib/types';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -10,12 +20,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Play, Square, RefreshCw, X, Crosshair, Radio, Pause, Navigation, Zap } from 'lucide-react';
+import {
+  Play,
+  Square,
+  RefreshCw,
+  Crosshair,
+  Radio,
+  Pause,
+  Zap,
+  Navigation,
+  Sliders,
+} from 'lucide-react';
 import { emitDriverLocation } from '@/lib/socket';
 
-// ─── Geo math helpers ──────────────────────────────────────────────────────────
+// ─── Geo Math Helpers ─────────────────────────────────────────────────────────
 
-/** Haversine distance between two coordinates, returns km */
 function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -29,7 +48,6 @@ function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-/** Initial compass bearing from point A to point B, in degrees 0–360 */
 function calculateBearing(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const φ1 = (lat1 * Math.PI) / 180;
   const φ2 = (lat2 * Math.PI) / 180;
@@ -39,7 +57,6 @@ function calculateBearing(lat1: number, lng1: number, lat2: number, lng2: number
   return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
 }
 
-/** Linearly interpolate N sub-steps between two geo points (exclusive of p1, inclusive of p2) */
 function interpolatePoints(
   lat1: number,
   lng1: number,
@@ -58,22 +75,17 @@ function interpolatePoints(
 interface DemoPoint {
   lat: number;
   lng: number;
-  bearing: number; // heading to next point
-  speed: number;   // km/h for this segment
+  bearing: number;
+  speed: number;
 }
 
-/**
- * Build a smooth demo route.
- * - If route stops are provided, interpolate between each consecutive pair.
- * - Otherwise generate a synthetic 12-point circular loop around the origin.
- */
 function generateDemoRoute(
   startLat: number,
   startLng: number,
   routeStops: { latitude: number; longitude: number }[],
   targetSpeedKmh: number
 ): DemoPoint[] {
-  const TICK_INTERVAL_S = 1; // 1 second per tick
+  const TICK_INTERVAL_S = 1;
 
   const buildSegment = (
     fromLat: number,
@@ -83,32 +95,31 @@ function generateDemoRoute(
   ): DemoPoint[] => {
     const distKm = calculateDistance(fromLat, fromLng, toLat, toLng);
     const bearing = calculateBearing(fromLat, fromLng, toLat, toLng);
-    // Number of ticks to cover this segment at the target speed
     const travelTimeSec = distKm > 0 ? (distKm / targetSpeedKmh) * 3600 : 4;
-    const steps = Math.max(4, Math.round(travelTimeSec / TICK_INTERVAL_S));
+    const steps = Math.max(3, Math.round(travelTimeSec / TICK_INTERVAL_S));
     const subPoints = interpolatePoints(fromLat, fromLng, toLat, toLng, steps);
-    // Realistic speed: slight variation ±15%
-    return subPoints.map(() => ({
-      lat: 0, // will be filled below
-      lng: 0,
-      bearing,
-      speed: targetSpeedKmh * (0.85 + Math.random() * 0.3),
-    })).map((p, i) => ({ ...p, lat: subPoints[i].lat, lng: subPoints[i].lng }));
+    return subPoints
+      .map(() => ({
+        lat: 0,
+        lng: 0,
+        bearing,
+        speed: targetSpeedKmh * (0.9 + Math.random() * 0.2),
+      }))
+      .map((p, i) => ({ ...p, lat: subPoints[i].lat, lng: subPoints[i].lng }));
   };
 
   let waypoints: { latitude: number; longitude: number }[] = [];
 
   if (routeStops.length >= 2) {
-    // Use assigned route stops as the skeleton
-    waypoints = [...routeStops];
-    // Loop back to start
-    waypoints.push(routeStops[0]);
+    waypoints = [{ latitude: startLat, longitude: startLng }, ...routeStops, routeStops[0]];
   } else if (routeStops.length === 1) {
-    // Single stop: go there and come back
-    waypoints = [{ latitude: startLat, longitude: startLng }, routeStops[0], { latitude: startLat, longitude: startLng }];
+    waypoints = [
+      { latitude: startLat, longitude: startLng },
+      routeStops[0],
+      { latitude: startLat, longitude: startLng },
+    ];
   } else {
-    // Synthetic circular loop — 12 evenly-spaced points ~0.5 km radius
-    const radiusDeg = 0.005; // ~0.55 km
+    const radiusDeg = 0.005;
     for (let i = 0; i <= 12; i++) {
       const angle = (i / 12) * 2 * Math.PI;
       waypoints.push({
@@ -119,15 +130,21 @@ function generateDemoRoute(
   }
 
   const route: DemoPoint[] = [];
-  // Always start from the user-supplied custom position
   let prevLat = startLat;
   let prevLng = startLng;
 
   for (const wp of waypoints) {
+    if (Math.abs(prevLat - wp.latitude) < 0.00001 && Math.abs(prevLng - wp.longitude) < 0.00001) {
+      continue;
+    }
     const seg = buildSegment(prevLat, prevLng, wp.latitude, wp.longitude);
     route.push(...seg);
     prevLat = wp.latitude;
     prevLng = wp.longitude;
+  }
+
+  if (route.length === 0) {
+    route.push({ lat: startLat, lng: startLng, bearing: 0, speed: targetSpeedKmh });
   }
 
   return route;
@@ -140,165 +157,87 @@ interface LocationSimulatorModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLocationUpdated: () => void;
+  initialBusId?: string;
 }
 
 type DemoState = 'idle' | 'running' | 'paused';
+type ActiveTab = 'auto' | 'manual';
 
 export default function LocationSimulatorModal({
   buses,
   isOpen,
   onClose,
   onLocationUpdated,
+  initialBusId,
 }: LocationSimulatorModalProps) {
-  // ── Existing state ──────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<ActiveTab>('auto');
   const [selectedBusId, setSelectedBusId] = useState<string>('');
-  const [stepIndex, setStepIndex] = useState<number>(0);
-  const [isAutoSimulating, setIsAutoSimulating] = useState<boolean>(false);
-  const [intervalId, setIntervalId] = useState<ReturnType<typeof setInterval> | null>(null);
-  const [isUpdating, setIsUpdating] = useState<boolean>(false);
+  const [customSpeed, setCustomSpeed] = useState<string>('30');
   const [customLat, setCustomLat] = useState<string>('');
   const [customLng, setCustomLng] = useState<string>('');
-  const [customSpeed, setCustomSpeed] = useState<string>('');
-  const [logMessage, setLogMessage] = useState<string>('');
+  const [stepIndex, setStepIndex] = useState<number>(0);
+  const [isUpdating, setIsUpdating] = useState<boolean>(false);
+  const [isAutoLooping, setIsAutoLooping] = useState<boolean>(false);
   const [isAcquiringGps, setIsAcquiringGps] = useState<boolean>(false);
+  const [logMessage, setLogMessage] = useState<string>('');
 
-  // ── Demo simulation state ───────────────────────────────────────────────────
+  // Demo Movement State
   const [demoState, setDemoState] = useState<DemoState>('idle');
   const [demoRoute, setDemoRoute] = useState<DemoPoint[]>([]);
   const [demoStepIndex, setDemoStepIndex] = useState<number>(0);
-  const [demoCurrentPos, setDemoCurrentPos] = useState<{ lat: number; lng: number; bearing: number; speed: number } | null>(null);
+  const [demoCurrentPos, setDemoCurrentPos] = useState<{
+    lat: number;
+    lng: number;
+    bearing: number;
+    speed: number;
+  } | null>(null);
 
-  // Use refs for values the interval closure needs to read without stale captures
   const demoIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoLoopIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const demoRouteRef = useRef<DemoPoint[]>([]);
   const demoStepRef = useRef<number>(0);
   const selectedBusIdRef = useRef<string>('');
 
-  if (!isOpen) return null;
+  // Auto-select initial bus
+  useEffect(() => {
+    if (isOpen) {
+      if (initialBusId && buses.some((b) => b.id === initialBusId)) {
+        setSelectedBusId(initialBusId);
+      } else if (!selectedBusId && buses.length > 0) {
+        setSelectedBusId(buses[0].id);
+      }
+    }
+  }, [isOpen, initialBusId, buses]);
 
   const currentBus = buses.find((b) => b.id === selectedBusId) || null;
   const configuredRouteStops = (currentBus?.assignedRoute?.stops || []).sort(
     (a, b) => a.sequence - b.sequence
   );
 
-  // ── Existing handlers ───────────────────────────────────────────────────────
-
-  const handleUseDeviceGps = () => {
-    if (!('geolocation' in navigator)) {
-      setLogMessage('Geolocation is not supported by your browser.');
-      return;
-    }
-    setIsAcquiringGps(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setIsAcquiringGps(false);
-        const { latitude, longitude, speed } = pos.coords;
-        setCustomLat(latitude.toFixed(6));
-        setCustomLng(longitude.toFixed(6));
-        setCustomSpeed(speed ? Math.round(speed * 3.6).toString() : '25');
-        setLogMessage(`Acquired device GPS: [${latitude.toFixed(5)}, ${longitude.toFixed(5)}]`);
-      },
-      (err) => {
-        setIsAcquiringGps(false);
-        setLogMessage(`Failed to acquire device GPS: ${err.message}`);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
-  };
-
-  const handleSendCustom = async () => {
+  // Pre-populate coordinates from bus tracking or first stop
+  useEffect(() => {
     if (!currentBus) return;
-    const lat = parseFloat(customLat);
-    const lng = parseFloat(customLng);
-    const speed = parseFloat(customSpeed) || 0;
-
-    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-      setLogMessage('Please enter valid numeric latitude (-90 to 90) and longitude (-180 to 180)');
-      return;
+    if (currentBus.tracking?.latitude && currentBus.tracking?.longitude) {
+      setCustomLat(currentBus.tracking.latitude.toFixed(6));
+      setCustomLng(currentBus.tracking.longitude.toFixed(6));
+    } else if (configuredRouteStops.length > 0) {
+      setCustomLat(configuredRouteStops[0].latitude.toFixed(6));
+      setCustomLng(configuredRouteStops[0].longitude.toFixed(6));
+    } else if (!customLat) {
+      setCustomLat('27.691500');
+      setCustomLng('85.342000');
     }
+  }, [selectedBusId]);
 
-    setIsUpdating(true);
-    try {
-      emitDriverLocation({
-        busId: currentBus.id,
-        collegeId: currentBus.collegeId,
-        latitude: lat,
-        longitude: lng,
-        speed,
-        heading: 0,
-        status: BusStatus.MOVING,
-      });
-      setLogMessage(`Emitted live GPS packet for ${currentBus.busNumber}: [${lat.toFixed(5)}, ${lng.toFixed(5)}] @ ${speed} km/h`);
-      onLocationUpdated();
-    } catch (e: unknown) {
-      setLogMessage(`Failed: ${e instanceof Error ? e.message : String(e)}`);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (demoIntervalRef.current) clearInterval(demoIntervalRef.current);
+      if (autoLoopIntervalRef.current) clearInterval(autoLoopIntervalRef.current);
+    };
+  }, []);
 
-  const handleStepSimulate = async () => {
-    if (!currentBus || configuredRouteStops.length === 0) return;
-    setIsUpdating(true);
-    const waypoint = configuredRouteStops[stepIndex % configuredRouteStops.length];
-    const speed = parseFloat(customSpeed) || 30;
-    try {
-      emitDriverLocation({
-        busId: currentBus.id,
-        collegeId: currentBus.collegeId,
-        latitude: waypoint.latitude,
-        longitude: waypoint.longitude,
-        speed,
-        heading: 0,
-        status: BusStatus.MOVING,
-      });
-      setLogMessage(`Emitted stop location for ${currentBus.busNumber}: Stop #${waypoint.sequence} (${waypoint.name})`);
-      setStepIndex((prev) => prev + 1);
-      onLocationUpdated();
-    } catch (e: unknown) {
-      setLogMessage(`Failed: ${e instanceof Error ? e.message : String(e)}`);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const startAutoSimulation = () => {
-    if (isAutoSimulating || configuredRouteStops.length === 0) return;
-    setIsAutoSimulating(true);
-    let idx = stepIndex;
-    const id = setInterval(async () => {
-      if (!currentBus) return;
-      const wp = configuredRouteStops[idx % configuredRouteStops.length];
-      const spd = parseFloat(customSpeed) || 30;
-      try {
-        emitDriverLocation({
-          busId: currentBus.id,
-          collegeId: currentBus.collegeId,
-          latitude: wp.latitude,
-          longitude: wp.longitude,
-          speed: spd,
-          heading: 0,
-          status: BusStatus.MOVING,
-        });
-        setLogMessage(`[Auto] Moved ${currentBus.busNumber} to Stop #${wp.sequence} (${wp.name})`);
-        idx++;
-        setStepIndex(idx);
-        onLocationUpdated();
-      } catch (err: unknown) {
-        setLogMessage(`Auto simulation error: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    }, 4000);
-    setIntervalId(id);
-  };
-
-  const stopAutoSimulation = () => {
-    if (intervalId) clearInterval(intervalId);
-    setIntervalId(null);
-    setIsAutoSimulating(false);
-    setLogMessage('Auto simulation stopped');
-  };
-
-  // ── Demo simulation handlers ────────────────────────────────────────────────
+  // ── Auto Route Movement Handlers ─────────────────────────────────────────────
 
   const clearDemoInterval = () => {
     if (demoIntervalRef.current) {
@@ -314,10 +253,7 @@ export default function LocationSimulatorModal({
 
     demoIntervalRef.current = setInterval(() => {
       const currentRoute = demoRouteRef.current;
-      const step = demoStepRef.current;
-
-      if (step >= currentRoute.length) {
-        // Loop the route
+      if (demoStepRef.current >= currentRoute.length) {
         demoStepRef.current = 0;
       }
 
@@ -346,7 +282,7 @@ export default function LocationSimulatorModal({
       });
 
       setLogMessage(
-        `🚌 Demo tick ${demoStepRef.current}/${currentRoute.length} · [${point.lat.toFixed(5)}, ${point.lng.toFixed(5)}] · ${Math.round(point.speed)} km/h · ${Math.round(point.bearing)}°`
+        `[${point.lat.toFixed(5)}, ${point.lng.toFixed(5)}] • ${Math.round(point.speed)} km/h • ${Math.round(point.bearing)}°`
       );
       onLocationUpdated();
     }, 1000);
@@ -354,13 +290,13 @@ export default function LocationSimulatorModal({
 
   const handleStartDemo = () => {
     if (!currentBus) {
-      setLogMessage('Please select a bus first.');
+      setLogMessage('Please select a vehicle first.');
       return;
     }
     const lat = parseFloat(customLat);
     const lng = parseFloat(customLng);
-    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-      setLogMessage('Please enter a valid starting latitude and longitude.');
+    if (isNaN(lat) || isNaN(lng)) {
+      setLogMessage('Invalid start coordinates.');
       return;
     }
 
@@ -371,31 +307,29 @@ export default function LocationSimulatorModal({
 
     clearDemoInterval();
     setDemoState('running');
-    setLogMessage(`🟢 Demo started: ${route.length} steps generated. Starting from [${lat.toFixed(5)}, ${lng.toFixed(5)}]`);
+    setLogMessage(`Simulation started: ${route.length} steps along route at ~${targetSpeed} km/h.`);
     startDemoTick(currentBus, route, 0);
-  };
-
-  const handleResumeDemo = () => {
-    if (!currentBus || demoRouteRef.current.length === 0) return;
-    // Use ref values — they are always in sync with the interval, unlike React state which can be 1 tick behind
-    const resumeStep = demoStepRef.current;
-    const resumeRoute = demoRouteRef.current;
-    clearDemoInterval();
-    setDemoState('running');
-    setLogMessage(`▶ Demo resumed from step ${resumeStep}/${resumeRoute.length}`);
-    startDemoTick(currentBus, resumeRoute, resumeStep);
   };
 
   const handlePauseDemo = () => {
     clearDemoInterval();
     setDemoState('paused');
-    setLogMessage(`⏸ Demo paused at step ${demoStepIndex}/${demoRoute.length} · ${demoCurrentPos ? `[${demoCurrentPos.lat.toFixed(5)}, ${demoCurrentPos.lng.toFixed(5)}]` : ''}`);
+    setLogMessage(`Simulation paused.`);
+  };
+
+  const handleResumeDemo = () => {
+    if (!currentBus || demoRouteRef.current.length === 0) return;
+    const resumeStep = demoStepRef.current;
+    const resumeRoute = demoRouteRef.current;
+    clearDemoInterval();
+    setDemoState('running');
+    setLogMessage(`Simulation resumed from step ${resumeStep}/${resumeRoute.length}.`);
+    startDemoTick(currentBus, resumeRoute, resumeStep);
   };
 
   const handleStopDemo = () => {
     clearDemoInterval();
 
-    // Emit a final IDLE packet so backend reflects the stopped state
     if (currentBus && demoCurrentPos) {
       emitDriverLocation({
         busId: currentBus.id,
@@ -414,301 +348,383 @@ export default function LocationSimulatorModal({
     setDemoCurrentPos(null);
     demoRouteRef.current = [];
     demoStepRef.current = 0;
-    setLogMessage('⏹ Demo stopped. Final STOPPED packet sent.');
+    setLogMessage('Simulation stopped.');
     onLocationUpdated();
   };
 
-  // ── Compass bearing label ───────────────────────────────────────────────────
-  const bearingLabel = (deg: number) => {
-    const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW', 'N'];
-    return dirs[Math.round(deg / 45)];
+  // ── Manual Coordinates Handlers ──────────────────────────────────────────────
+
+  const handleUseDeviceGps = () => {
+    if (!('geolocation' in navigator)) {
+      setLogMessage('Geolocation is not supported by your browser.');
+      return;
+    }
+    setIsAcquiringGps(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setIsAcquiringGps(false);
+        const { latitude, longitude, speed } = pos.coords;
+        setCustomLat(latitude.toFixed(6));
+        setCustomLng(longitude.toFixed(6));
+        setCustomSpeed(speed ? Math.round(speed * 3.6).toString() : '30');
+        setLogMessage(`Acquired device GPS: [${latitude.toFixed(5)}, ${longitude.toFixed(5)}]`);
+      },
+      (err) => {
+        setIsAcquiringGps(false);
+        setLogMessage(`GPS error: ${err.message}`);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
   };
 
-  // ────────────────────────────────────────────────────────────────────────────
+  const handleSendCustomPacket = async () => {
+    if (!currentBus) return;
+    const lat = parseFloat(customLat);
+    const lng = parseFloat(customLng);
+    const speed = parseFloat(customSpeed) || 0;
+
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      setLogMessage('Enter valid numeric latitude & longitude.');
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      emitDriverLocation({
+        busId: currentBus.id,
+        collegeId: currentBus.collegeId,
+        latitude: lat,
+        longitude: lng,
+        speed,
+        heading: 0,
+        status: BusStatus.MOVING,
+      });
+      setLogMessage(`Broadcasted packet for ${currentBus.busNumber}: [${lat.toFixed(5)}, ${lng.toFixed(5)}]`);
+      onLocationUpdated();
+    } catch (e: unknown) {
+      setLogMessage(`Error: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleStepStop = async () => {
+    if (!currentBus || configuredRouteStops.length === 0) return;
+    setIsUpdating(true);
+    const wp = configuredRouteStops[stepIndex % configuredRouteStops.length];
+    try {
+      emitDriverLocation({
+        busId: currentBus.id,
+        collegeId: currentBus.collegeId,
+        latitude: wp.latitude,
+        longitude: wp.longitude,
+        speed: parseFloat(customSpeed) || 30,
+        heading: 0,
+        status: BusStatus.MOVING,
+      });
+      setLogMessage(`Moved to Stop #${wp.sequence} (${wp.name})`);
+      setStepIndex((prev) => prev + 1);
+      onLocationUpdated();
+    } catch (e: unknown) {
+      setLogMessage(`Error: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const bearingLabel = (deg: number) => {
+    const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW', 'N'];
+    return dirs[Math.round(deg / 45) % 8];
+  };
 
   return (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between border-b pb-3">
-          <div className="flex items-center gap-2">
-            <Radio className="h-5 w-5 text-blue-600 animate-pulse" />
-            <h3 className="text-lg font-bold text-slate-900">Live GPS Simulator</h3>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md p-0 gap-0 overflow-hidden border border-slate-200 bg-white shadow-2xl rounded-2xl">
+        {/* Modal Header */}
+        <DialogHeader className="p-5 pb-3.5 border-b border-slate-100 pr-12">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 border border-blue-100 shrink-0">
+              <Radio className="h-4 w-4 text-blue-600 animate-pulse" />
+            </div>
+            <div>
+              <DialogTitle className="text-base font-bold text-slate-900">
+                Bus Movement Simulator
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500 mt-0.5">
+                Simulate realistic live movement along bus routes
+              </DialogDescription>
+            </div>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+        </DialogHeader>
 
-        <div className="mt-4 space-y-4">
-          {/* Bus selector */}
+        {/* Modal Body */}
+        <div className="p-5 space-y-4">
+          {/* Target Vehicle Selector */}
           <div>
-            <Label required className="mb-1.5">Select Vehicle</Label>
+            <Label className="text-xs font-semibold text-slate-700 mb-1.5 block">Select Bus</Label>
             <Select value={selectedBusId} onValueChange={setSelectedBusId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a bus..." />
+              <SelectTrigger className="h-10 bg-white border-slate-300 text-xs">
+                <SelectValue placeholder="Choose a bus..." />
               </SelectTrigger>
               <SelectContent>
                 {buses.map((b) => (
-                  <SelectItem key={b.id} value={b.id}>
-                    {b.busNumber} ({b.vehicleNumber}) - {b.assignedRoute?.name || 'No Route Assigned'}
+                  <SelectItem key={b.id} value={b.id} className="text-xs">
+                    <span className="font-bold text-slate-900">{b.busNumber}</span> ({b.vehicleNumber})
+                    {b.assignedRoute ? ` • ${b.assignedRoute.name}` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Custom Real-Time GPS Coordinates */}
-          <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-200 text-xs space-y-2.5">
-            <div className="flex items-center justify-between">
-              <p className="font-bold text-slate-800">Dynamic GPS Coordinates:</p>
-              <button
-                type="button"
-                onClick={handleUseDeviceGps}
-                disabled={isAcquiringGps}
-                className="flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-800 disabled:opacity-50 cursor-pointer"
-              >
-                <Crosshair className={`h-3.5 w-3.5 ${isAcquiringGps ? 'animate-spin' : ''}`} />
-                <span>{isAcquiringGps ? 'Acquiring...' : 'Use My Device GPS'}</span>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <label className="text-[10px] text-slate-500 font-medium">Latitude</label>
-                <input
-                  type="number"
-                  step="any"
-                  value={customLat}
-                  onChange={(e) => setCustomLat(e.target.value)}
-                  className="w-full rounded border border-slate-300 bg-white text-slate-900 px-2 py-1 text-xs font-mono placeholder:text-slate-400 placeholder:opacity-100 hover:border-slate-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 [color-scheme:light]"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-slate-500 font-medium">Longitude</label>
-                <input
-                  type="number"
-                  step="any"
-                  value={customLng}
-                  onChange={(e) => setCustomLng(e.target.value)}
-                  className="w-full rounded border border-slate-300 bg-white text-slate-900 px-2 py-1 text-xs font-mono placeholder:text-slate-400 placeholder:opacity-100 hover:border-slate-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 [color-scheme:light]"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-slate-500 font-medium">Speed (km/h)</label>
-                <input
-                  type="number"
-                  value={customSpeed}
-                  onChange={(e) => setCustomSpeed(e.target.value)}
-                  className="w-full rounded border border-slate-300 bg-white text-slate-900 px-2 py-1 text-xs font-mono placeholder:text-slate-400 placeholder:opacity-100 hover:border-slate-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 [color-scheme:light]"
-                  placeholder="Speed"
-                />
-              </div>
-            </div>
-
+          {/* Clean Segmented Tab Switcher */}
+          <div className="flex rounded-lg bg-slate-100 p-1 border border-slate-200/80">
             <button
-              onClick={handleSendCustom}
-              disabled={isUpdating || !currentBus || !customLat || !customLng}
-              className="w-full rounded-lg bg-emerald-600 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50 cursor-pointer transition-all shadow-xs"
+              type="button"
+              onClick={() => setActiveTab('auto')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === 'auto'
+                  ? 'bg-white text-blue-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
             >
-              Broadcast GPS Packet over WebSocket
+              <Zap className="h-3.5 w-3.5 text-blue-600" />
+              <span>Route Simulation</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('manual')}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-md text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === 'manual'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Sliders className="h-3.5 w-3.5 text-slate-500" />
+              <span>Manual Telemetry</span>
             </button>
           </div>
 
-          {/* ── Demo / Simulate Movement ───────────────────────────────────── */}
-          <div className="rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-3.5 text-xs space-y-3">
-            {/* Header */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center justify-center h-6 w-6 rounded-full bg-blue-600 text-white shadow">
-                <Zap className="h-3.5 w-3.5" />
-              </div>
-              <div>
-                <p className="font-bold text-blue-900 text-[13px] leading-tight">Demo Route Simulation</p>
-                <p className="text-blue-600 text-[10px]">Uber-style live movement · Emits real WebSocket events</p>
-              </div>
-            </div>
-
-            {/* Route info banner */}
-            <div className="rounded-lg bg-white/70 border border-blue-100 p-2 text-[11px] text-blue-800">
-              {configuredRouteStops.length >= 2 ? (
-                <span>
-                  🗺️ Will interpolate between <strong>{configuredRouteStops.length} route stops</strong> assigned to this bus.
-                </span>
-              ) : configuredRouteStops.length === 1 ? (
-                <span>🗺️ Will travel to the single assigned stop and return.</span>
-              ) : (
-                <span>🔄 No route stops — will simulate a <strong>synthetic circular loop</strong> around your starting coordinates.</span>
-              )}
-            </div>
-
-            {/* Live telemetry readout (when running or paused) */}
-            {demoCurrentPos && (
-              <div className="rounded-lg bg-slate-900 text-green-400 font-mono text-[10px] px-3 py-2.5 space-y-1 shadow-inner">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400">LAT / LNG</span>
-                  <span>{demoCurrentPos.lat.toFixed(6)}, {demoCurrentPos.lng.toFixed(6)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400">SPEED</span>
-                  <span className="text-yellow-400">{Math.round(demoCurrentPos.speed)} km/h</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400">HEADING</span>
-                  <span className="text-cyan-400">
-                    {Math.round(demoCurrentPos.bearing)}° {bearingLabel(demoCurrentPos.bearing)}
+          {/* ── TAB 1: Route Movement Simulation (Clean & Focused) ── */}
+          {activeTab === 'auto' && (
+            <div className="space-y-3.5">
+              {/* Route Summary */}
+              <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-3 flex items-center justify-between text-xs">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-blue-700 tracking-wider block">
+                    Assigned Path
                   </span>
+                  <p className="font-semibold text-slate-800 text-xs mt-0.5 truncate max-w-[240px]">
+                    {currentBus?.assignedRoute?.name || 'Circular Loop (No route assigned)'}
+                  </p>
                 </div>
-                {demoRoute.length > 0 && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">PROGRESS</span>
-                    <span className="text-purple-400">
-                      {demoStepIndex}/{demoRoute.length} steps
-                    </span>
-                  </div>
-                )}
-                {/* Progress bar */}
-                {demoRoute.length > 0 && (
-                  <div className="mt-1 h-1 rounded-full bg-slate-700 overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-green-400 transition-all duration-500"
-                      style={{ width: `${Math.round((demoStepIndex / demoRoute.length) * 100)}%` }}
-                    />
-                  </div>
-                )}
+                <Badge variant="outline" className="bg-white text-[11px] font-medium border-blue-200 text-blue-800">
+                  {configuredRouteStops.length} stops
+                </Badge>
               </div>
-            )}
 
-            {/* Controls */}
-            <div className="flex items-center gap-2 pt-0.5">
-              {/* Start / Resume */}
-              {demoState === 'idle' && (
-                <button
-                  onClick={handleStartDemo}
-                  disabled={!currentBus || !customLat || !customLng || isAutoSimulating}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-blue-600 py-2.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 cursor-pointer transition-all shadow"
-                >
-                  <Play className="h-3.5 w-3.5 fill-white" />
-                  Start Demo
-                </button>
-              )}
-
-              {demoState === 'paused' && (
-                <button
-                  onClick={handleResumeDemo}
-                  disabled={!currentBus}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-blue-600 py-2.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 cursor-pointer transition-all shadow"
-                >
-                  <Play className="h-3.5 w-3.5 fill-white" />
-                  Resume
-                </button>
-              )}
-
-              {/* Pause (shown when running) */}
-              {demoState === 'running' && (
-                <button
-                  onClick={handlePauseDemo}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-amber-500 py-2.5 text-xs font-bold text-white hover:bg-amber-600 cursor-pointer transition-all shadow"
-                >
-                  <Pause className="h-3.5 w-3.5" />
-                  Pause
-                </button>
-              )}
-
-              {/* Stop (shown when running or paused) */}
-              {(demoState === 'running' || demoState === 'paused') && (
-                <button
-                  onClick={handleStopDemo}
-                  className="flex items-center justify-center gap-1.5 rounded-lg bg-red-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-red-700 cursor-pointer transition-all shadow"
-                >
-                  <Square className="h-3.5 w-3.5" />
-                  Stop
-                </button>
-              )}
-            </div>
-
-            {/* State badge */}
-            <div className="flex items-center gap-2">
-              <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                demoState === 'running'
-                  ? 'bg-green-100 text-green-800'
-                  : demoState === 'paused'
-                  ? 'bg-amber-100 text-amber-800'
-                  : 'bg-slate-100 text-slate-600'
-              }`}>
-                <span className={`h-1.5 w-1.5 rounded-full ${
-                  demoState === 'running' ? 'bg-green-500 animate-pulse' : demoState === 'paused' ? 'bg-amber-500' : 'bg-slate-400'
-                }`} />
-                {demoState === 'running' ? 'Simulating' : demoState === 'paused' ? 'Paused' : 'Ready'}
-              </span>
-              {demoState !== 'idle' && demoRoute.length > 0 && (
-                <span className="text-[10px] text-blue-700 font-medium">
-                  <Navigation className="inline h-3 w-3 mr-0.5 mb-0.5" />
-                  {demoRoute.length} total steps · ~{Math.round(demoRoute.length / 60)}m loop
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Dynamic Route Waypoints Section */}
-          <div className="rounded-xl bg-slate-50 p-3.5 border border-slate-200 text-xs space-y-2">
-            <p className="font-bold text-slate-800">Tenant Route Waypoints Simulation:</p>
-            {configuredRouteStops.length > 0 ? (
-              <>
-                <p className="text-blue-700 font-medium">
-                  Next Stop #{configuredRouteStops[stepIndex % configuredRouteStops.length].sequence}:{' '}
-                  <span className="font-bold">{configuredRouteStops[stepIndex % configuredRouteStops.length].name}</span>
-                </p>
-                <p className="font-mono text-[11px] text-slate-500">
-                  Coord: {configuredRouteStops[stepIndex % configuredRouteStops.length].latitude.toFixed(5)},{' '}
-                  {configuredRouteStops[stepIndex % configuredRouteStops.length].longitude.toFixed(5)}
-                </p>
-
-                <div className="flex items-center gap-2 pt-1">
-                  <button
-                    onClick={handleStepSimulate}
-                    disabled={isUpdating || isAutoSimulating || !currentBus}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-blue-600 py-2 text-xs font-semibold text-white hover:bg-blue-700 cursor-pointer disabled:opacity-50 transition-all"
-                  >
-                    <RefreshCw className={`h-3.5 w-3.5 ${isUpdating ? 'animate-spin' : ''}`} />
-                    Next Route Waypoint
-                  </button>
-
-                  {isAutoSimulating ? (
+              {/* Speed Preset Selector */}
+              <div>
+                <Label className="text-xs font-semibold text-slate-700 mb-1.5 block">Simulation Speed</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: '30 km/h (City)', val: '30' },
+                    { label: '50 km/h (Normal)', val: '50' },
+                    { label: '80 km/h (Fast)', val: '80' },
+                  ].map((s) => (
                     <button
-                      onClick={stopAutoSimulation}
-                      className="flex items-center justify-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700 cursor-pointer transition-all"
+                      key={s.val}
+                      type="button"
+                      disabled={demoState !== 'idle'}
+                      onClick={() => setCustomSpeed(s.val)}
+                      className={`py-1.5 px-2 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                        customSpeed === s.val
+                          ? 'bg-blue-600 border-blue-600 text-white shadow-xs'
+                          : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-50'
+                      }`}
                     >
-                      <Square className="h-3.5 w-3.5" />
-                      Stop
+                      {s.label}
                     </button>
-                  ) : (
-                    <button
-                      onClick={startAutoSimulation}
-                      disabled={!currentBus}
-                      className="flex items-center justify-center gap-1.5 rounded-lg bg-slate-800 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-900 cursor-pointer disabled:opacity-50 transition-all"
-                    >
-                      <Play className="h-3.5 w-3.5" />
-                      Auto Loop
-                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Telemetry Display when Running / Paused */}
+              {demoCurrentPos && (
+                <div className="rounded-xl bg-slate-950 p-3 text-emerald-400 font-mono text-[11px] space-y-2 shadow-inner">
+                  <div className="grid grid-cols-2 gap-2 border-b border-slate-800 pb-2">
+                    <div>
+                      <span className="text-[10px] uppercase text-slate-400 block font-sans">
+                        Position
+                      </span>
+                      <span className="font-semibold text-white">
+                        {demoCurrentPos.lat.toFixed(5)}, {demoCurrentPos.lng.toFixed(5)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase text-slate-400 block font-sans">
+                        Speed & Heading
+                      </span>
+                      <span className="text-yellow-300 font-semibold">{Math.round(demoCurrentPos.speed)} km/h</span>
+                      <span className="text-cyan-400 ml-2">
+                        {Math.round(demoCurrentPos.bearing)}° ({bearingLabel(demoCurrentPos.bearing)})
+                      </span>
+                    </div>
+                  </div>
+
+                  {demoRoute.length > 0 && (
+                    <div className="space-y-1 pt-0.5">
+                      <div className="flex justify-between text-[10px] text-slate-400 font-sans">
+                        <span>Route Progress</span>
+                        <span>{Math.round((demoStepIndex / demoRoute.length) * 100)}%</span>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-emerald-400 transition-all duration-300"
+                          style={{
+                            width: `${Math.round((demoStepIndex / demoRoute.length) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
                   )}
                 </div>
-              </>
-            ) : (
-              <p className="text-slate-500 italic">
-                {currentBus
-                  ? 'This bus has no assigned route stops configured. Use custom coordinates above.'
-                  : 'Select a bus to view assigned route stops.'}
-              </p>
-            )}
-          </div>
+              )}
 
-          {/* Log output */}
+              {/* Primary Action Buttons */}
+              <div className="pt-1">
+                {demoState === 'idle' && (
+                  <Button
+                    onClick={handleStartDemo}
+                    disabled={!currentBus}
+                    className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md shadow-blue-500/20"
+                  >
+                    <Play className="h-4 w-4 fill-white mr-2" />
+                    Start Live Simulation
+                  </Button>
+                )}
+
+                {demoState === 'running' && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={handlePauseDemo}
+                      className="flex-1 h-10 bg-amber-500 hover:bg-amber-600 text-white font-semibold text-xs"
+                    >
+                      <Pause className="h-3.5 w-3.5 mr-1.5" />
+                      Pause
+                    </Button>
+                    <Button
+                      onClick={handleStopDemo}
+                      variant="destructive"
+                      className="flex-1 h-10 text-xs font-semibold"
+                    >
+                      <Square className="h-3.5 w-3.5 mr-1.5" />
+                      Stop & Reset
+                    </Button>
+                  </div>
+                )}
+
+                {demoState === 'paused' && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={handleResumeDemo}
+                      className="flex-1 h-10 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs"
+                    >
+                      <Play className="h-3.5 w-3.5 fill-white mr-1.5" />
+                      Resume
+                    </Button>
+                    <Button
+                      onClick={handleStopDemo}
+                      variant="destructive"
+                      className="flex-1 h-10 text-xs font-semibold"
+                    >
+                      <Square className="h-3.5 w-3.5 mr-1.5" />
+                      Stop & Reset
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── TAB 2: Manual Coordinates (Optional Advanced Tools) ── */}
+          {activeTab === 'manual' && (
+            <div className="space-y-3.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-700">Custom Position</span>
+                <button
+                  type="button"
+                  onClick={handleUseDeviceGps}
+                  disabled={isAcquiringGps}
+                  className="flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-800 disabled:opacity-50 cursor-pointer"
+                >
+                  <Crosshair className={`h-3 w-3 ${isAcquiringGps ? 'animate-spin' : ''}`} />
+                  <span>{isAcquiringGps ? 'Acquiring GPS...' : 'Use My GPS'}</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-semibold text-slate-500 block mb-1">Latitude</label>
+                  <Input
+                    type="number"
+                    step="any"
+                    value={customLat}
+                    onChange={(e) => setCustomLat(e.target.value)}
+                    placeholder="27.6915"
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-semibold text-slate-500 block mb-1">Longitude</label>
+                  <Input
+                    type="number"
+                    step="any"
+                    value={customLng}
+                    onChange={(e) => setCustomLng(e.target.value)}
+                    placeholder="85.3420"
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
+              </div>
+
+              <Button
+                onClick={handleSendCustomPacket}
+                disabled={isUpdating || !currentBus || !customLat || !customLng}
+                variant="outline"
+                size="sm"
+                className="w-full text-xs font-semibold text-slate-800 border-slate-300 hover:bg-slate-50"
+              >
+                <Radio className="h-3.5 w-3.5 mr-1.5 text-blue-600" />
+                Broadcast Single GPS Packet
+              </Button>
+
+              {configuredRouteStops.length > 0 && (
+                <div className="pt-2 border-t border-slate-100">
+                  <Button
+                    onClick={handleStepStop}
+                    disabled={isUpdating || !currentBus}
+                    variant="secondary"
+                    size="sm"
+                    className="w-full text-xs"
+                  >
+                    <RefreshCw className={`h-3 w-3 mr-1.5 ${isUpdating ? 'animate-spin' : ''}`} />
+                    Jump to Next Route Stop (#{(stepIndex % configuredRouteStops.length) + 1})
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Status Message Footer */}
           {logMessage && (
-            <div className="rounded-lg bg-blue-50 p-2.5 text-xs text-blue-900 border border-blue-200 font-medium font-mono break-all">
-              {logMessage}
+            <div className="rounded-lg bg-slate-100 px-3 py-1.5 text-[11px] font-mono text-slate-700 border border-slate-200/80 truncate flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-500 shrink-0" />
+              <span className="truncate">{logMessage}</span>
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

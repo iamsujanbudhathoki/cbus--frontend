@@ -303,6 +303,7 @@ export default function CollegeLiveTrackingPage() {
           {buses.length > 0 && (
             <LocationSimulatorModal
               buses={buses}
+              initialBusId={selectedBusId || undefined}
               isOpen={isSimulatorOpen}
               onClose={() => setIsSimulatorOpen(false)}
               onLocationUpdated={fetchFleetTracking}

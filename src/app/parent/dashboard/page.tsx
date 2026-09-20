@@ -150,7 +150,12 @@ export default function ParentDashboard() {
               <Radio className="h-5 w-5 text-red-500 animate-pulse shrink-0" />
               <h1 className="text-2xl font-extrabold text-slate-900">Child's Live Bus Tracker</h1>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">Real-time transportation location & status</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Welcome, <span className="font-semibold text-slate-800">{user?.name || 'Parent'}</span>
+              {selectedChild?.name && (
+                <> • Tracking transport for <span className="font-semibold text-slate-800">{selectedChild.name}</span></>
+              )}
+            </p>
           </div>
 
           <button
