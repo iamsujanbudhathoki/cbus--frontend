@@ -1,8 +1,30 @@
 @import "tailwindcss";
 
+/* ─── App-level design tokens ─────────────────────────────────────────────── */
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /*
+   * Form control tokens — pinned to the app's explicit light-mode palette.
+   * These are intentionally NOT overridden in the dark-mode media query because
+   * this app is a light-mode admin dashboard. The variables ensure every form
+   * control uses the same readable values regardless of OS theme.
+   */
+  --input-bg:              #ffffff;
+  --input-bg-disabled:     #f8fafc; /* slate-50 */
+  --input-text:            #0f172a; /* slate-900 */
+  --input-text-disabled:   #94a3b8; /* slate-400 */
+  --input-placeholder:     #94a3b8; /* slate-400 */
+  --input-border:          #cbd5e1; /* slate-300 */
+  --input-border-hover:    #94a3b8; /* slate-400 */
+  --input-border-focus:    #2563eb; /* blue-600 */
+  --input-ring-focus:      #3b82f620; /* blue-500/12 */
+  --input-autofill-shadow: inset 0 0 0 9999px #ffffff; /* suppress yellow bg */
+  --popover-bg:            #ffffff;
+  --popover-text:          #020617; /* slate-950 */
+  --popover-border:        #e2e8f0; /* slate-200 */
 }
 
 @theme inline {
@@ -12,10 +34,12 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Body inherits OS theme preference (intentional) */
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    /* Form controls stay light — this is a light-mode dashboard app */
   }
 }
 
@@ -24,3 +48,104 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ─── Global form control baseline ───────────────────────────────────────────
+ * Forces ALL inputs, textareas, and selects to use our explicit light palette.
+ * `color-scheme: light` tells the browser to use its light-mode UA stylesheet
+ * for these elements, preventing OS dark mode from injecting dark backgrounds
+ * or light text that would make typed values invisible.
+ * ─────────────────────────────────────────────────────────────────────────── */
+@layer base {
+  input,
+  textarea,
+  select {
+    color-scheme: light;
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    border-color: var(--input-border);
+  }
+
+  /* Placeholder text — visually distinct but readable */
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--input-placeholder);
+    opacity: 1; /* Firefox reduces opacity by default */
+  }
+
+  /* Hover border lift */
+  input:not(:disabled):not(:read-only):hover,
+  textarea:not(:disabled):not(:read-only):hover,
+  select:not(:disabled):hover {
+    border-color: var(--input-border-hover);
+  }
+
+  /* Focus ring — override browser default outline */
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: none;
+    border-color: var(--input-border-focus);
+    box-shadow: 0 0 0 3px var(--input-ring-focus);
+  }
+
+  /* Disabled state */
+  input:disabled,
+  textarea:disabled,
+  select:disabled {
+    background-color: var(--input-bg-disabled);
+    color: var(--input-text-disabled);
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  /* Read-only state (not disabled but non-editable) */
+  input:read-only:not(:disabled),
+  textarea:read-only:not(:disabled) {
+    background-color: var(--input-bg-disabled);
+    color: var(--input-text);
+    cursor: default;
+  }
+
+  /*
+   * Browser autofill override.
+   * Browsers (Chrome, Edge, Safari) apply a UA background color on autofilled
+   * inputs that overrides ANY background-color rule — including !important.
+   * The only reliable cross-browser fix is a large inset box-shadow that
+   * visually paints over their background while leaving the text readable.
+   */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active,
+  textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus,
+  select:-webkit-autofill,
+  select:-webkit-autofill:hover,
+  select:-webkit-autofill:focus {
+    -webkit-box-shadow: var(--input-autofill-shadow);
+    box-shadow: var(--input-autofill-shadow);
+    -webkit-text-fill-color: var(--input-text);
+    caret-color: var(--input-text);
+    color-scheme: light;
+  }
+
+  /*
+   * Radix UI popover / dropdown panels (SelectContent, MultiSelect dropdown).
+   * These are rendered in a Portal so they escape the component's styling
+   * context — pin them explicitly.
+   */
+  [data-radix-popper-content-wrapper],
+  [data-radix-select-viewport],
+  [role="listbox"],
+  [role="combobox"] {
+    color-scheme: light;
+  }
+
+  /* Native <select> option elements (for any non-Radix selects) */
+  select option {
+    background-color: var(--input-bg);
+    color: var(--input-text);
+  }
+}
+

@@ -142,7 +142,7 @@ export function MultiSelect({
           }
         }}
         className={cn(
-          'flex min-h-[36px] w-full items-center justify-between rounded-lg border bg-white px-2.5 py-1 text-xs shadow-xs transition-colors cursor-pointer',
+          'flex min-h-[36px] w-full items-center justify-between rounded-lg border bg-white text-slate-900 px-2.5 py-1 text-xs shadow-xs transition-colors cursor-pointer [color-scheme:light]',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30 focus-visible:border-blue-600',
           error
             ? 'border-red-500 focus-visible:ring-red-500/20'
@@ -210,7 +210,7 @@ export function MultiSelect({
       {isOpen && (
         <div
           role="listbox"
-          className="absolute z-[99999] mt-1 max-h-60 w-full overflow-hidden rounded-xl border border-slate-200 bg-white p-1 text-slate-950 shadow-lg animate-in fade-in-50 zoom-in-95"
+          className="absolute z-[99999] mt-1 max-h-60 w-full overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-950 [color-scheme:light] p-1 shadow-lg animate-in fade-in-50 zoom-in-95"
         >
           {/* Search Bar */}
           <div className="flex items-center border-b border-slate-100 px-2.5 py-1.5 gap-2">
@@ -221,7 +221,7 @@ export function MultiSelect({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={searchPlaceholder}
-              className="w-full bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none"
+              className="w-full bg-transparent text-xs text-slate-800 placeholder:text-slate-400 placeholder:opacity-100 focus:outline-none"
             />
             {search && (
               <button
@@ -273,8 +273,8 @@ export function MultiSelect({
                     className={cn(
                       'flex items-center justify-between rounded-md px-2.5 py-1.5 text-xs transition-colors cursor-pointer select-none',
                       isSelected
-                        ? 'bg-blue-50/80 font-medium text-blue-900'
-                        : 'hover:bg-slate-100 text-slate-700'
+                        ? 'bg-blue-50 font-medium text-blue-900'
+                        : 'hover:bg-slate-100 text-slate-700 hover:text-slate-900'
                     )}
                   >
                     <div className="flex items-center gap-2 min-w-0 flex-1">
