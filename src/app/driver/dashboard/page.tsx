@@ -524,7 +524,7 @@ export default function DriverDashboardPage() {
                     value={shiftNotes}
                     onChange={(e) => setShiftNotes(e.target.value)}
                     placeholder="Log traffic conditions, delays, or minor issues during shift..."
-                    className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-800 placeholder-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+                    className="w-full rounded-xl border border-slate-300 bg-white text-xs text-slate-800 placeholder:text-slate-400 placeholder:opacity-100 p-2.5 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 [color-scheme:light]"
                   />
                   <div className="flex justify-end">
                     <button
@@ -618,7 +618,7 @@ export default function DriverDashboardPage() {
                         value={initialNotes}
                         onChange={(e) => setInitialNotes(e.target.value)}
                         placeholder="e.g. Morning pickup trip starting..."
-                        className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-800 placeholder-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20"
+                        className="w-full rounded-xl border border-slate-300 bg-white text-xs text-slate-800 placeholder:text-slate-400 placeholder:opacity-100 p-2.5 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 [color-scheme:light]"
                       />
                     </div>
 

@@ -480,8 +480,7 @@ export default function LocationSimulatorModal({
                   step="any"
                   value={customLat}
                   onChange={(e) => setCustomLat(e.target.value)}
-                  className="w-full rounded border border-slate-300 px-2 py-1 text-xs font-mono"
-                  placeholder="Latitude"
+                  className="w-full rounded border border-slate-300 bg-white text-slate-900 px-2 py-1 text-xs font-mono placeholder:text-slate-400 placeholder:opacity-100 hover:border-slate-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 [color-scheme:light]"
                 />
               </div>
               <div>
@@ -491,7 +490,7 @@ export default function LocationSimulatorModal({
                   step="any"
                   value={customLng}
                   onChange={(e) => setCustomLng(e.target.value)}
-                  className="w-full rounded border border-slate-300 px-2 py-1 text-xs font-mono"
+                  className="w-full rounded border border-slate-300 bg-white text-slate-900 px-2 py-1 text-xs font-mono placeholder:text-slate-400 placeholder:opacity-100 hover:border-slate-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 [color-scheme:light]"
                 />
               </div>
               <div>
@@ -500,7 +499,7 @@ export default function LocationSimulatorModal({
                   type="number"
                   value={customSpeed}
                   onChange={(e) => setCustomSpeed(e.target.value)}
-                  className="w-full rounded border border-slate-300 px-2 py-1 text-xs font-mono"
+                  className="w-full rounded border border-slate-300 bg-white text-slate-900 px-2 py-1 text-xs font-mono placeholder:text-slate-400 placeholder:opacity-100 hover:border-slate-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/20 [color-scheme:light]"
                   placeholder="Speed"
                 />
               </div>

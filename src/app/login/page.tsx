@@ -121,10 +121,10 @@ export default function LoginPage() {
                 type="email"
                 {...register('email')}
                 placeholder="name@institution.edu"
-                className={`w-full rounded-xl border py-2.5 pl-10 pr-4 text-sm focus:outline-none transition-all ${
+                className={`w-full rounded-xl border bg-white text-slate-900 py-2.5 pl-10 pr-4 text-sm placeholder:text-slate-400 placeholder:opacity-100 focus:outline-none transition-all [color-scheme:light] ${
                   errors.email
                     ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
-                    : 'border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20'
+                    : 'border-slate-300 hover:border-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20'
                 }`}
               />
             </div>
@@ -143,10 +143,10 @@ export default function LoginPage() {
                 type="password"
                 {...register('password')}
                 placeholder="••••••••"
-                className={`w-full rounded-xl border py-2.5 pl-10 pr-4 text-sm focus:outline-none transition-all ${
+                className={`w-full rounded-xl border bg-white text-slate-900 py-2.5 pl-10 pr-4 text-sm placeholder:text-slate-400 placeholder:opacity-100 focus:outline-none transition-all [color-scheme:light] ${
                   errors.password
                     ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
-                    : 'border-slate-300 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20'
+                    : 'border-slate-300 hover:border-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20'
                 }`}
               />
             </div>
