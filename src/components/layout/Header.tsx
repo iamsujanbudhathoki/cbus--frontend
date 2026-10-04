@@ -31,6 +31,7 @@ import {
   sendBrowserNotification,
 } from '@/lib/notifications';
 import { toast } from 'sonner';
+import NotificationDropdown from './NotificationDropdown';
 
 export default function Header() {
   const { user, logout } = useAuth();
@@ -152,6 +153,9 @@ export default function Header() {
 
         {/* Right Side Header Controls */}
         <div className="flex items-center gap-2">
+          {/* Real-time In-App Notification Dropdown */}
+          <NotificationDropdown userId={user.id} />
+
           {/* Browser Notification Bell Toggle */}
           <button
             type="button"
@@ -159,14 +163,14 @@ export default function Header() {
             className="relative flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
             title={
               notifPermission === 'granted'
-                ? 'Browser notifications are active'
-                : 'Click to enable live browser notifications'
+                ? 'Desktop & browser notifications active'
+                : 'Click to enable live background notifications'
             }
-            aria-label="Toggle live notifications"
+            aria-label="Toggle live browser notifications"
           >
             {notifPermission === 'granted' ? (
               <>
-                <Bell className="h-4 w-4 text-blue-600" />
+                <Bell className="h-4 w-4 text-emerald-600" />
                 <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white" />
               </>
             ) : (

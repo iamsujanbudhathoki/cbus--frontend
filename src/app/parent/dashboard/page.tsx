@@ -139,6 +139,37 @@ export default function ParentDashboard() {
     ? `${Math.max(0, Math.round((Date.now() - busDetails.tracking.lastUpdated) / 1000))}s ago`
     : 'Never';
 
+  const busLat = busDetails?.tracking?.latitude;
+  const busLng = busDetails?.tracking?.longitude;
+  const stopLat = selectedChild?.assignedStop?.latitude;
+  const stopLng = selectedChild?.assignedStop?.longitude;
+
+  const distanceToStop =
+    typeof busLat === 'number' &&
+    typeof busLng === 'number' &&
+    typeof stopLat === 'number' &&
+    typeof stopLng === 'number'
+      ? Math.round(
+          6371e3 *
+            2 *
+            Math.atan2(
+              Math.sqrt(
+                Math.sin(((stopLat - busLat) * Math.PI) / 360) ** 2 +
+                  Math.cos((busLat * Math.PI) / 180) *
+                    Math.cos((stopLat * Math.PI) / 180) *
+                    Math.sin(((stopLng - busLng) * Math.PI) / 360) ** 2
+              ),
+              Math.sqrt(
+                1 -
+                  (Math.sin(((stopLat - busLat) * Math.PI) / 360) ** 2 +
+                    Math.cos((busLat * Math.PI) / 180) *
+                      Math.cos((stopLat * Math.PI) / 180) *
+                      Math.sin(((stopLng - busLng) * Math.PI) / 360) ** 2)
+              )
+            )
+        )
+      : null;
+
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
       <Header />
@@ -213,6 +244,7 @@ export default function ParentDashboard() {
                     buses={[busDetails]}
                     routeStops={busDetails.assignedRoute?.stops || []}
                     selectedBusId={busDetails.id}
+                    assignedStopId={selectedChild.assignedStop?.id}
                     height="500px"
                   />
                 ) : (
@@ -256,6 +288,24 @@ export default function ParentDashboard() {
                       ⏱️ {selectedChild.assignedStop?.estimatedTime || 'N/A'}
                     </span>
                   </div>
+                  {distanceToStop !== null && (
+                    <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 text-slate-700">
+                      <span className="font-medium">Proximity:</span>
+                      <span className={`font-bold px-2 py-0.5 rounded-full text-[11px] ${
+                        distanceToStop <= 120
+                          ? 'bg-emerald-100 text-emerald-800 animate-pulse'
+                          : distanceToStop <= 1000
+                          ? 'bg-amber-100 text-amber-800 animate-pulse'
+                          : 'bg-blue-50 text-blue-700 border border-blue-200'
+                      }`}>
+                        {distanceToStop <= 120
+                          ? '🚏 Arrived at stop!'
+                          : distanceToStop <= 1000
+                          ? `🚌 Approaching (~${distanceToStop}m away)`
+                          : `📍 ${distanceToStop > 1000 ? `${(distanceToStop / 1000).toFixed(1)} km` : `${distanceToStop}m`} away`}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 

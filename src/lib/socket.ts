@@ -172,3 +172,28 @@ export function emitDriverLocation(data: {
   const socket = getSocket();
   socket.emit('bus:location_update', data);
 }
+
+/**
+ * Subscribe to direct personal notifications over WebSocket (for live web and app views).
+ */
+export function subscribeToUserNotifications(
+  userId: string,
+  onNotification: (notification: any) => void
+): () => void {
+  if (!userId) return () => {};
+
+  const socket = getSocket();
+  socket.emit('join:user', { userId });
+
+  const handleNotification = (notif: any) => {
+    if (notif) {
+      onNotification(notif);
+    }
+  };
+
+  socket.on('notification:new', handleNotification);
+
+  return () => {
+    socket.off('notification:new', handleNotification);
+  };
+}

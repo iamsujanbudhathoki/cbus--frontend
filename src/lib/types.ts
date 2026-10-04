@@ -180,3 +180,34 @@ export interface TrackingData {
   lastUpdated: number;
   trackingStatus: TrackingStatus;
 }
+
+export enum NotificationType {
+  BUS_APPROACHING = 'BUS_APPROACHING',
+  BUS_ARRIVED = 'BUS_ARRIVED',
+  BUS_DELAYED = 'BUS_DELAYED',
+  GENERAL = 'GENERAL',
+}
+
+export interface AppNotification {
+  id: string;
+  userId: string;
+  collegeId?: string;
+  title: string;
+  message: string;
+  type: NotificationType;
+  metadata?: {
+    busId?: string;
+    busNumber?: string;
+    vehicleNumber?: string;
+    stopId?: string;
+    stopName?: string;
+    studentId?: string;
+    studentName?: string;
+    distanceMeters?: number;
+    alertType?: string;
+    [key: string]: any;
+  };
+  isRead: boolean;
+  readAt?: string;
+  createdAt: string;
+}

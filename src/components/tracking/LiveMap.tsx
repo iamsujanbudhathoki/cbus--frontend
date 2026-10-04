@@ -8,6 +8,7 @@ interface LiveMapProps {
   buses: Bus[];
   routeStops?: RouteStop[];
   selectedBusId?: string;
+  assignedStopId?: string;
   onSelectBus?: (busId: string) => void;
   height?: string;
 }
@@ -16,6 +17,7 @@ export default function LiveMap({
   buses,
   routeStops = [],
   selectedBusId,
+  assignedStopId,
   onSelectBus,
   height = '500px',
 }: LiveMapProps) {
@@ -25,6 +27,7 @@ export default function LiveMap({
   const polylineRef = useRef<any>(null);
   const hasInitialFit = useRef<boolean>(false);
   const routeMarkersRef = useRef<{ [key: string]: any }>({});
+  const geofenceCircleRef = useRef<any>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !mapRef.current) return;
@@ -244,7 +247,33 @@ export default function LiveMap({
       map.fitBounds(stopBounds, { padding: [50, 50], maxZoom: 14 });
       hasInitialFit.current = true;
     }
-  }, [buses, routeStops, selectedBusId]);
+
+    // 4. Render Geofence Proximity Circle for student's assigned stop
+    if (assignedStopId && routeStops.length > 0) {
+      const assignedStop = routeStops.find((s) => s.id === assignedStopId);
+      if (assignedStop && typeof assignedStop.latitude === 'number' && typeof assignedStop.longitude === 'number') {
+        if (geofenceCircleRef.current) {
+          geofenceCircleRef.current.setLatLng([assignedStop.latitude, assignedStop.longitude]);
+        } else {
+          geofenceCircleRef.current = L.circle([assignedStop.latitude, assignedStop.longitude], {
+            radius: 1000,
+            color: '#2563eb',
+            fillColor: '#3b82f6',
+            fillOpacity: 0.1,
+            weight: 2,
+            dashArray: '6, 6',
+          }).addTo(map);
+          geofenceCircleRef.current.bindTooltip('📍 Proximity Zone: 1 km Alert Radius', {
+            permanent: false,
+            direction: 'top',
+          });
+        }
+      }
+    } else if (geofenceCircleRef.current && !assignedStopId) {
+      map.removeLayer(geofenceCircleRef.current);
+      geofenceCircleRef.current = null;
+    }
+  }, [buses, routeStops, selectedBusId, assignedStopId]);
 
   const hasAnyCoordinates =
     buses.some((b) => typeof b.tracking?.latitude === 'number' && typeof b.tracking?.longitude === 'number') ||

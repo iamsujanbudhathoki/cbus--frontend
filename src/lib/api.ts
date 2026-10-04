@@ -1,4 +1,4 @@
-import { Bus, College, Driver, DriverPortalData, DriverShift, Parent, Route, RouteStop, Student, User } from './types';
+import { AppNotification, Bus, College, Driver, DriverPortalData, DriverShift, Parent, Route, RouteStop, Student, User } from './types';
 import { envConfig } from '../config/env.config';
 
 const API_BASE_URL = envConfig.NEXT_PUBLIC_API_URL;
@@ -105,4 +105,18 @@ export const api = {
   endDriverShift: (id: string) => fetchAPI<DriverShift>(`/driver-shifts/${id}/end`, { method: 'POST' }),
   getDriverShiftHistory: (range?: string) => fetchAPI<DriverShift[]>(`/driver-shifts/history${range ? `?range=${range}` : ''}`),
   getAdminDriverShifts: (collegeId?: string, driverId?: string) => fetchAPI<DriverShift[]>(`/driver-shifts/admin?${collegeId ? `collegeId=${collegeId}` : ''}${driverId ? `&driverId=${driverId}` : ''}`),
+
+  // Notifications & Device Push
+  getNotifications: (page = 1, limit = 20) =>
+    fetchAPI<{ data: AppNotification[]; total: number; page: number; totalPages: number }>(`/notifications?page=${page}&limit=${limit}`),
+  getUnreadNotificationCount: () =>
+    fetchAPI<{ unreadCount: number }>('/notifications/unread-count'),
+  markNotificationAsRead: (id: string) =>
+    fetchAPI<AppNotification>(`/notifications/${id}/read`, { method: 'PATCH' }),
+  markAllNotificationsAsRead: () =>
+    fetchAPI<{ success: boolean; count: number }>('/notifications/read-all', { method: 'PATCH' }),
+  registerDeviceToken: (body: { token: string; platform?: string; deviceInfo?: string }) =>
+    fetchAPI<any>('/notifications/devices', { method: 'POST', body: JSON.stringify(body) }),
+  unregisterDeviceToken: (token: string) =>
+    fetchAPI<any>('/notifications/devices', { method: 'DELETE', body: JSON.stringify({ token }) }),
 };
